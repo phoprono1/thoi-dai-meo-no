@@ -17,7 +17,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_BACKEND_URL=http://${VPS_HOST:-localhost}:4001
+        - NEXT_PUBLIC_BACKEND_URL=http://${VPS_HOST}:4001
     container_name: meo-no-frontend
     restart: unless-stopped
     ports:

@@ -37,8 +37,9 @@ jobs:
 
             cd /opt/meo-no
 
-            # Set VPS host for docker-compose build arg
+            # Set VPS host for docker-compose build arg (used in NEXT_PUBLIC_BACKEND_URL)
             export VPS_HOST=${{ secrets.VPS_HOST }}
+            echo "VPS_HOST=${VPS_HOST}" > .env
 
             # Build and restart containers
             echo "Building and starting containers..."
