@@ -1,0 +1,14 @@
+# Chặn node_modules ở bất cứ đâu trong project
+node_modules/
+
+# Nếu bạn dùng Next.js/React cho frontend
+frontend/.next/
+frontend/out/
+
+# Nếu bạn dùng Spring Boot hoặc Node cho backend
+backend/target/
+backend/dist/
+backend/.env
+
+# Chặn thư mục tạm
+temp/
