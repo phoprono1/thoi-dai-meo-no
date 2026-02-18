@@ -253,6 +253,8 @@ export class GameGateway
                     this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, elimMsg);
 
                     if (this.checkGameOver(room)) return;
+                    // Game continues — notify eliminated player personally
+                    this.server.to(player.socketId).emit(SocketEvent.GAME_OVER, { winnerId: null, winner: null, eliminated: true });
                 }
 
                 this.broadcastGameState(room);
@@ -771,6 +773,11 @@ export class GameGateway
         }
 
         if (this.checkGameOver(room)) return;
+
+        // Game continues — notify eliminated player personally so they see a modal
+        if (result.exploded) {
+            client.emit(SocketEvent.GAME_OVER, { winnerId: null, winner: null, eliminated: true });
+        }
 
         this.broadcastGameState(room);
 

@@ -544,13 +544,37 @@ export function GameBoard({ game, onShowHelp }: Props) {
         />
       )}
 
-      {game.gameOver && (
+      {/* Spectator banner — shown when player chose to watch after being eliminated */}
+      {game.isSpectating && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            background: "rgba(180,0,0,0.85)",
+            color: "#fff",
+            textAlign: "center",
+            padding: "6px 12px",
+            fontSize: "13px",
+            fontWeight: 600,
+            letterSpacing: "0.5px",
+          }}
+        >
+          💀 Bạn đã bị loại — đang xem ván đấu
+        </div>
+      )}
+
+      {/* Show modal: always when not spectating; or when spectating and game truly ended (winner exists) */}
+      {game.gameOver && (!game.isSpectating || game.gameOver.winner) && (
         <GameOverModal
           gameOver={game.gameOver}
           playerId={game.playerId}
           restartVotes={game.restartVotes}
           onRestart={game.restartGame}
           onLeave={game.leaveRoom}
+          onSpectate={game.spectate}
         />
       )}
     </>

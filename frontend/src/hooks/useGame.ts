@@ -25,6 +25,7 @@ export function useGame() {
     const [futureCards, setFutureCards] = useState<Card[] | null>(null);
     const [pickCards, setPickCards] = useState<{ cards: Card[]; source: string } | null>(null);
     const [gameOver, setGameOver] = useState<any>(null);
+    const [isSpectating, setIsSpectating] = useState<boolean>(false);
     const [eliminated, setEliminated] = useState<string | null>(null);
     const [turnTimeRemaining, setTurnTimeRemaining] = useState<number>(30);
     const [lastPlayedCards, setLastPlayedCards] = useState<string[]>([]); // for animation
@@ -68,6 +69,7 @@ export function useGame() {
             if (data.room.status === 'waiting') {
                 setGameState(null);
                 setGameOver(null);
+                setIsSpectating(false);
                 setRestartVotes(null);
                 setActionLog([]);
                 setFutureCards(null);
@@ -199,6 +201,7 @@ export function useGame() {
         setMessages([]);
         setActionLog([]);
         setGameOver(null);
+        setIsSpectating(false);
         setRestartVotes(null);
         sessionStorage.removeItem(PLAYER_ID_KEY);
     }, [socket]);
@@ -253,6 +256,11 @@ export function useGame() {
         // local state reset will happen when server sends ROOM_UPDATE after all voted
     }, [socket]);
 
+    const spectate = useCallback(() => {
+        setIsSpectating(true);
+        setGameOver(null);
+    }, []);
+
     const refreshRooms = useCallback(() => {
         socket?.emit(SocketEvent.ROOM_LIST);
     }, [socket]);
@@ -260,9 +268,9 @@ export function useGame() {
     return {
         rooms, currentRoom, playerId, gameState, messages, error,
         actionLog, futureCards, setFutureCards, pickCards, setPickCards,
-        gameOver, setGameOver, eliminated, turnTimeRemaining,
+        gameOver, setGameOver, isSpectating, eliminated, turnTimeRemaining,
         lastPlayedCards, lastDrawn, restartVotes,
         createRoom, joinRoom, leaveRoom, startGame, playCard, drawCard,
-        defuse, giveCard, pickCard, sendMessage, setReady, restartGame, refreshRooms,
+        defuse, giveCard, pickCard, sendMessage, setReady, restartGame, spectate, refreshRooms,
     };
 }

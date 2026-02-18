@@ -6,6 +6,8 @@ interface GameOverData {
     name: string;
     avatar: string;
   } | null;
+  /** true when this player was eliminated mid-game (game still running) */
+  eliminated?: boolean;
 }
 
 interface RestartVotes {
@@ -20,6 +22,7 @@ interface Props {
   restartVotes: RestartVotes | null;
   onRestart: () => void;
   onLeave: () => void;
+  onSpectate?: () => void;
 }
 
 export function GameOverModal({
@@ -28,11 +31,59 @@ export function GameOverModal({
   restartVotes,
   onRestart,
   onLeave,
+  onSpectate,
 }: Props) {
   const winnerAvatar = AVATARS.find((a) => a.id === gameOver.winner?.avatar);
   const hasVoted = !!(playerId && restartVotes?.voters.includes(playerId));
   const voteCount = restartVotes?.votes ?? 0;
   const voteTotal = restartVotes?.total ?? 0;
+
+  // Player was eliminated mid-game and the game is still running (no winner yet)
+  const isEliminatedMidGame = gameOver.eliminated && !gameOver.winner;
+
+  if (isEliminatedMidGame) {
+    return (
+      <div className="winner-overlay">
+        <div className="winner-modal">
+          <div className="winner-trophy bounce-in">💀</div>
+          <div className="winner-title" style={{ color: "var(--tet-red)" }}>
+            BỊ LOẠI!
+          </div>
+          <div
+            className="winner-name"
+            style={{
+              fontSize: "14px",
+              color: "var(--tet-text-muted)",
+              marginBottom: "8px",
+            }}
+          >
+            Bạn đã bị Phao Mèo loại.
+          </div>
+          <div
+            style={{
+              fontSize: "13px",
+              color: "var(--tet-text-muted)",
+              marginBottom: "20px",
+            }}
+          >
+            Ván đấu vẫn đang tiếp tục...
+          </div>
+          <div
+            style={{ display: "flex", gap: "10px", justifyContent: "center" }}
+          >
+            {onSpectate && (
+              <button className="btn btn-gold btn-lg" onClick={onSpectate}>
+                👁️ Xem tiếp
+              </button>
+            )}
+            <button className="btn btn-outline btn-lg" onClick={onLeave}>
+              🚪 Rời Phòng
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="winner-overlay">
