@@ -1,0 +1,52 @@
+name: Deploy Meo No
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            set -e
+
+            # Clone or pull latest code
+            if [ -d "/opt/meo-no/.git" ]; then
+              echo "Pulling latest code..."
+              cd /opt/meo-no
+              git pull origin master
+            else
+              echo "Cloning repository..."
+              mkdir -p /opt/meo-no
+              git clone https://github.com/phoprono1/thoi-dai-meo-no.git /opt/meo-no
+              cd /opt/meo-no
+            fi
+
+            cd /opt/meo-no
+
+            # Set VPS host for docker-compose build arg
+            export VPS_HOST=${{ secrets.VPS_HOST }}
+
+            # Build and restart containers
+            echo "Building and starting containers..."
+            docker compose down --remove-orphans
+            docker compose build --no-cache
+            docker compose up -d
+
+            # Clean up unused Docker images
+            docker image prune -f
+
+            echo "Deployment completed successfully!"
