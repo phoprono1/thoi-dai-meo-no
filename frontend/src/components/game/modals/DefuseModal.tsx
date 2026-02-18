@@ -1,13 +1,44 @@
+import { useEffect, useState } from "react";
+
+const AUTO_DEFUSE_SECONDS = 10;
+
 interface Props {
   deckCount: number;
   onDefuse: (position: number) => void;
 }
 
 export function DefuseModal({ deckCount, onDefuse }: Props) {
+  const [secondsLeft, setSecondsLeft] = useState(AUTO_DEFUSE_SECONDS);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return;
+    const id = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [secondsLeft]);
+
+  const urgency = secondsLeft <= 3;
+
   return (
     <div className="modal-overlay">
       <div className="modal">
         <h3>🧯 Tháo Ngòi!</h3>
+
+        {/* Countdown */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginBottom: "12px",
+          }}
+        >
+          <span
+            className={urgency ? "turn-timer urgent pulse-glow" : "turn-timer"}
+            style={{ fontSize: "20px", padding: "6px 18px" }}
+          >
+            ⏳ {secondsLeft}s
+          </span>
+        </div>
+
         <p
           style={{
             fontSize: "14px",

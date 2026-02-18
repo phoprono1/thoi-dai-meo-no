@@ -32,7 +32,14 @@ export function useGame() {
 
     const { playSound } = useSound();
 
+    // Stable refs to avoid stale closures in socket listeners
+    const playSoundRef = useRef(playSound);
+    const playerIdRef = useRef<string | null>(null);
     const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Keep refs in sync with latest values
+    useEffect(() => { playSoundRef.current = playSound; }, [playSound]);
+    useEffect(() => { playerIdRef.current = playerId; }, [playerId]);
 
     useEffect(() => {
         const s = getSocket();
@@ -44,98 +51,115 @@ export function useGame() {
             s.emit(SocketEvent.PLAYER_RECONNECT, { playerId: savedPlayerId });
         }
 
-        s.on(SocketEvent.ROOM_LIST, (data: ClientRoom[]) => {
+        // Define named handlers so cleanup removes exactly these handlers
+        const onRoomList = (data: ClientRoom[]) => {
             setRooms(data);
-        });
+        };
 
-        s.on(SocketEvent.ROOM_UPDATE, (data: { room: ClientRoom; playerId?: string }) => {
+        const onRoomUpdate = (data: { room: ClientRoom; playerId?: string }) => {
             setCurrentRoom(data.room);
             if (data.playerId) {
                 setPlayerId(data.playerId);
+                playerIdRef.current = data.playerId;
                 sessionStorage.setItem(PLAYER_ID_KEY, data.playerId);
             }
-        });
+        };
 
-        s.on(SocketEvent.ROOM_ERROR, (data: { error: string }) => {
+        const onRoomError = (data: { error: string }) => {
             setError(data.error);
             if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
             errorTimeoutRef.current = setTimeout(() => setError(null), 3000);
-        });
+        };
 
-        s.on(SocketEvent.GAME_START, () => {
-            playSound('intro');
-        });
+        const onGameStart = () => {
+            playSoundRef.current('intro');
+        };
 
-        s.on(SocketEvent.GAME_STATE, (state: ClientGameState) => {
+        const onGameState = (state: ClientGameState) => {
             setGameState(state);
             setTurnTimeRemaining(state.turnTimeRemaining);
-        });
+        };
 
-        s.on(SocketEvent.GAME_ACTION, (data: { action: string }) => {
+        const onGameAction = (data: { action: string }) => {
             setActionLog((prev) => [...prev.slice(-19), data.action]);
 
             // SFX Logic based on action text
             const act = data.action.toLowerCase();
-            if (act.includes('bốc')) playSound('draw');
-            else if (act.includes('hủy') || act.includes('nope')) playSound('nope');
-            else if (act.includes('xào')) playSound('shuffle');
+            if (act.includes('bốc')) playSoundRef.current('draw');
+            else if (act.includes('hủy') || act.includes('nope')) playSoundRef.current('nope');
+            else if (act.includes('xào')) playSoundRef.current('shuffle');
             else if (act.includes('nổ')) { /* handled by elim event */ }
-            else if (act.includes('tháo ngòi')) playSound('defuse');
-            else if (act.includes('đang chờ')) playSound('alarm');
-            else playSound('play_card');
-        });
+            else if (act.includes('tháo ngòi')) playSoundRef.current('defuse');
+            else if (act.includes('đang chờ')) playSoundRef.current('alarm');
+            else playSoundRef.current('play_card');
+        };
 
-        s.on(SocketEvent.GAME_TURN_TIMER, (data: { remaining: number; currentPlayerId: string }) => {
+        const onTurnTimer = (data: { remaining: number; currentPlayerId: string }) => {
             setTurnTimeRemaining(data.remaining);
-        });
+        };
 
-        s.on(SocketEvent.CHAT_MESSAGE, (msg: ChatMessage) => {
+        const onChatMessage = (msg: ChatMessage) => {
             setMessages((prev) => [...prev.slice(-99), msg]);
-        });
+        };
 
-        s.on(SocketEvent.CHAT_HISTORY, (history: ChatMessage[]) => {
+        const onChatHistory = (history: ChatMessage[]) => {
             setMessages(history);
-        });
+        };
 
-        s.on(SocketEvent.GAME_SEE_FUTURE, (data: { cards: Card[] }) => {
+        const onSeeFuture = (data: { cards: Card[] }) => {
             setFutureCards(data.cards);
-        });
+        };
 
-        s.on(SocketEvent.GAME_PICK_CARD, (data: { cards: Card[]; source: string }) => {
+        const onPickCard = (data: { cards: Card[]; source: string }) => {
             setPickCards(data);
-        });
+        };
 
-        s.on(SocketEvent.GAME_OVER, (data: { winnerId: string }) => {
+        const onGameOver = (data: { winnerId: string | null; winner: { id: string; name: string; avatar: string } | null }) => {
             setGameOver(data);
-            if (data.winnerId === playerId) {
-                playSound('win');
+            if (data.winnerId === playerIdRef.current) {
+                playSoundRef.current('win');
             } else {
-                playSound('lose');
+                playSoundRef.current('lose');
             }
-        });
+        };
 
-        s.on(SocketEvent.GAME_PLAYER_ELIMINATED, (data: { playerId: string; playerName: string }) => {
+        const onPlayerEliminated = (data: { playerId: string; playerName: string }) => {
             setEliminated(data.playerName);
-            playSound('explode');
+            playSoundRef.current('explode');
             setTimeout(() => setEliminated(null), 3000);
-        });
+        };
+
+        s.on(SocketEvent.ROOM_LIST, onRoomList);
+        s.on(SocketEvent.ROOM_UPDATE, onRoomUpdate);
+        s.on(SocketEvent.ROOM_ERROR, onRoomError);
+        s.on(SocketEvent.GAME_START, onGameStart);
+        s.on(SocketEvent.GAME_STATE, onGameState);
+        s.on(SocketEvent.GAME_ACTION, onGameAction);
+        s.on(SocketEvent.GAME_TURN_TIMER, onTurnTimer);
+        s.on(SocketEvent.CHAT_MESSAGE, onChatMessage);
+        s.on(SocketEvent.CHAT_HISTORY, onChatHistory);
+        s.on(SocketEvent.GAME_SEE_FUTURE, onSeeFuture);
+        s.on(SocketEvent.GAME_PICK_CARD, onPickCard);
+        s.on(SocketEvent.GAME_OVER, onGameOver);
+        s.on(SocketEvent.GAME_PLAYER_ELIMINATED, onPlayerEliminated);
 
         // Request room list
         s.emit(SocketEvent.ROOM_LIST);
 
         return () => {
-            s.off(SocketEvent.ROOM_LIST);
-            s.off(SocketEvent.ROOM_UPDATE);
-            s.off(SocketEvent.ROOM_ERROR);
-            s.off(SocketEvent.GAME_STATE);
-            s.off(SocketEvent.GAME_ACTION);
-            s.off(SocketEvent.GAME_TURN_TIMER);
-            s.off(SocketEvent.CHAT_MESSAGE);
-            s.off(SocketEvent.CHAT_HISTORY);
-            s.off(SocketEvent.GAME_SEE_FUTURE);
-            s.off(SocketEvent.GAME_PICK_CARD);
-            s.off(SocketEvent.GAME_OVER);
-            s.off(SocketEvent.GAME_PLAYER_ELIMINATED);
+            s.off(SocketEvent.ROOM_LIST, onRoomList);
+            s.off(SocketEvent.ROOM_UPDATE, onRoomUpdate);
+            s.off(SocketEvent.ROOM_ERROR, onRoomError);
+            s.off(SocketEvent.GAME_START, onGameStart);
+            s.off(SocketEvent.GAME_STATE, onGameState);
+            s.off(SocketEvent.GAME_ACTION, onGameAction);
+            s.off(SocketEvent.GAME_TURN_TIMER, onTurnTimer);
+            s.off(SocketEvent.CHAT_MESSAGE, onChatMessage);
+            s.off(SocketEvent.CHAT_HISTORY, onChatHistory);
+            s.off(SocketEvent.GAME_SEE_FUTURE, onSeeFuture);
+            s.off(SocketEvent.GAME_PICK_CARD, onPickCard);
+            s.off(SocketEvent.GAME_OVER, onGameOver);
+            s.off(SocketEvent.GAME_PLAYER_ELIMINATED, onPlayerEliminated);
         };
     }, []);
 
@@ -208,6 +232,12 @@ export function useGame() {
         setGameState(null);
         setGameOver(null);
         setActionLog([]);
+        setFutureCards(null);
+        setPickCards(null);
+        setEliminated(null);
+        setTurnTimeRemaining(30);
+        setLastPlayedCards([]);
+        setLastDrawn(false);
     }, [socket]);
 
     const refreshRooms = useCallback(() => {

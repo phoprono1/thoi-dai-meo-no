@@ -28,6 +28,7 @@ import type {
 
 const TURN_TIME_LIMIT = 30; // seconds
 const DISCONNECT_GRACE_PERIOD = 30_000; // 30 seconds
+const FAVOR_TIMEOUT = 30_000; // 30 seconds to give a card
 
 @WebSocketGateway({
     cors: {
@@ -45,6 +46,11 @@ export class GameGateway
     private turnTimers: Map<string, NodeJS.Timeout> = new Map();
     private turnIntervals: Map<string, NodeJS.Timeout> = new Map();
     private actionTimers: Map<string, NodeJS.Timeout> = new Map(); // Timer for delayed actions
+
+    // favor timers: roomId -> timeout for favor_give pending action
+    private favorTimers: Map<string, NodeJS.Timeout> = new Map();
+    // defuse timers: roomId -> timeout for auto-defuse when player is idle
+    private defuseTimers: Map<string, NodeJS.Timeout> = new Map();
 
     constructor(
         private readonly roomService: RoomService,
@@ -83,6 +89,8 @@ export class GameGateway
                 // Player didn't reconnect in time → eliminate
                 player.isAlive = false;
                 player.isDisconnected = false;
+                // Remove stale socketId mapping so it doesn't block future lookups
+                this.roomService.removePlayerRoomMapping(player.socketId);
 
                 const elimMsg = this.chatService.sendSystemMessage(
                     room.id,
@@ -114,19 +122,65 @@ export class GameGateway
         const leaveResult = this.roomService.leaveRoom(client.id);
         if (!leaveResult) return;
 
-        this.server.to(leaveResult.room.id).emit(SocketEvent.ROOM_UPDATE, {
-            room: this.roomService.toClientRoom(leaveResult.room),
+        const { room: leftRoom, player: leftPlayer } = leaveResult;
+
+        // If room was deleted (last player left), clean up timers and chat
+        if (!this.roomService.getRoom(leftRoom.id)) {
+            this.clearTurnTimer(leftRoom.id);
+            if (this.actionTimers.has(leftRoom.id)) {
+                clearTimeout(this.actionTimers.get(leftRoom.id));
+                this.actionTimers.delete(leftRoom.id);
+            }
+            this.chatService.clearRoom(leftRoom.id);
+            this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+            return;
+        }
+
+        this.server.to(leftRoom.id).emit(SocketEvent.ROOM_UPDATE, {
+            room: this.roomService.toClientRoom(leftRoom),
         });
 
         const sysMsg = this.chatService.sendSystemMessage(
-            leaveResult.room.id,
-            `${leaveResult.player.name} đã rời phòng 👋`,
+            leftRoom.id,
+            `${leftPlayer.name} đã rời phòng 👋`,
         );
-        this.server.to(leaveResult.room.id).emit(SocketEvent.CHAT_MESSAGE, sysMsg);
+        this.server.to(leftRoom.id).emit(SocketEvent.CHAT_MESSAGE, sysMsg);
         this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
     }
 
     // ===================== TURN TIMER =====================
+
+    private startFavorTimerIfNeeded(room: Room): void {
+        if (room.gameState?.pendingAction?.type !== 'favor_give') return;
+        const favorTargetId = room.gameState.pendingAction.playerId;
+        const favorTarget = room.players.find(p => p.id === favorTargetId);
+        if (!favorTarget || favorTarget.hand.length === 0) return;
+
+        if (this.favorTimers.has(room.id)) {
+            clearTimeout(this.favorTimers.get(room.id));
+        }
+
+        const favorTimer = setTimeout(() => {
+            if (!room.gameState || room.gameState.pendingAction?.type !== 'favor_give') return;
+            if (favorTarget.hand.length === 0) return;
+            // Auto-pick a random card
+            const randomCard = favorTarget.hand[Math.floor(Math.random() * favorTarget.hand.length)];
+            const autoResult = this.gameService.handleGiveCard(room, favorTarget.id, randomCard.id);
+            if (autoResult.success) {
+                const timeoutMsg = this.chatService.sendSystemMessage(
+                    room.id,
+                    `⏰ ${favorTarget.name} không chọn bài — tự động cho 1 lá ngẫu nhiên!`,
+                );
+                this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, timeoutMsg);
+                this.server.to(room.id).emit(SocketEvent.GAME_ACTION, { action: autoResult.action });
+                this.broadcastGameState(room);
+                this.startTurnTimer(room);
+            }
+            this.favorTimers.delete(room.id);
+        }, FAVOR_TIMEOUT);
+
+        this.favorTimers.set(room.id, favorTimer);
+    }
 
     private startTurnTimer(room: Room): void {
         this.clearTurnTimer(room.id);
@@ -206,6 +260,11 @@ export class GameGateway
             clearInterval(interval);
             this.turnIntervals.delete(roomId);
         }
+        // Also clear defuse timer when turn timer is cleared
+        if (this.defuseTimers.has(roomId)) {
+            clearTimeout(this.defuseTimers.get(roomId));
+            this.defuseTimers.delete(roomId);
+        }
     }
 
     private broadcastGameState(room: Room): void {
@@ -237,6 +296,7 @@ export class GameGateway
             this.broadcastGameState(room);
 
             this.server.to(room.id).emit(SocketEvent.GAME_OVER, {
+                winnerId: alivePlayers[0]?.id ?? null,
                 winner: alivePlayers[0]
                     ? this.roomService.toClientPlayer(alivePlayers[0])
                     : null,
@@ -251,6 +311,19 @@ export class GameGateway
             }
 
             this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+
+            // Auto-delete room after 60s — clean up timers and chat too
+            setTimeout(() => {
+                this.clearTurnTimer(room.id);
+                if (this.actionTimers.has(room.id)) {
+                    clearTimeout(this.actionTimers.get(room.id));
+                    this.actionTimers.delete(room.id);
+                }
+                this.chatService.clearRoom(room.id);
+                this.roomService.deleteRoom(room.id);
+                this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+            }, 60_000);
+
             return true;
         }
         return false;
@@ -373,11 +446,36 @@ export class GameGateway
 
     @SubscribeMessage(SocketEvent.ROOM_LEAVE)
     handleLeaveRoom(@ConnectedSocket() client: Socket) {
+        // Get room info BEFORE leaving (to check if it's their turn)
+        const playerResult = this.roomService.getPlayerBySocketId(client.id);
+        const wasPlaying = playerResult?.room?.status === RoomStatus.PLAYING;
+        const wasCurrentPlayer = wasPlaying && playerResult?.room?.gameState &&
+            playerResult.room.gameState.turnOrder[playerResult.room.gameState.currentPlayerIndex] === playerResult.player.id;
+
         const result = this.roomService.leaveRoom(client.id);
         if (!result) return;
 
         const { room, player } = result;
         client.leave(room.id);
+
+        // If they left during their turn, clear timers and auto-advance
+        if (wasCurrentPlayer && room.gameState && room.status === RoomStatus.PLAYING) {
+            this.clearTurnTimer(room.id);
+            if (this.actionTimers.has(room.id)) {
+                clearTimeout(this.actionTimers.get(room.id));
+                this.actionTimers.delete(room.id);
+            }
+            if (this.favorTimers.has(room.id)) {
+                clearTimeout(this.favorTimers.get(room.id));
+                this.favorTimers.delete(room.id);
+            }
+            // Mark eliminated and advance turn
+            player.isAlive = false;
+            this.gameService.advanceTurnAfterElimination(room, player.id);
+            if (!this.checkGameOver(room)) {
+                this.startTurnTimer(room);
+            }
+        }
 
         this.broadcastRoomUpdate(room);
 
@@ -490,8 +588,6 @@ export class GameGateway
 
         this.broadcastGameState(room);
 
-        this.broadcastGameState(room);
-
         // Check if action is delayed
         if (room.gameState.pendingAction?.type === 'delayed_effect') {
             const actionTimer = setTimeout(() => {
@@ -536,6 +632,8 @@ export class GameGateway
                     if (!room.gameState?.pendingAction) {
                         this.startTurnTimer(room);
                     }
+                    // Start favor timeout if needed
+                    this.startFavorTimerIfNeeded(room);
                 }
                 this.actionTimers.delete(room.id);
             }, 5000); // 5 seconds delay
@@ -640,11 +738,47 @@ export class GameGateway
 
         this.broadcastGameState(room);
 
-        // Reset turn timer
-        this.startTurnTimer(room);
-    }
+        // If player has defuse pending, start 10s auto-defuse timer
+        if (room.gameState?.pendingAction?.type === 'defuse_insert') {
+            this.clearTurnTimer(room.id); // pause turn timer during defuse
+            const defusePlayer = playerResult.player;
 
-    @SubscribeMessage(SocketEvent.GAME_DEFUSE)
+            if (this.defuseTimers.has(room.id)) {
+                clearTimeout(this.defuseTimers.get(room.id));
+            }
+
+            const countdown = setInterval(() => {
+                // broadcast countdown so frontend can show it
+            }, 1000); // reserved for future countdown emit if needed
+
+            const defuseTimer = setTimeout(() => {
+                clearInterval(countdown);
+                if (!room.gameState || room.gameState.pendingAction?.type !== 'defuse_insert') {
+                    this.defuseTimers.delete(room.id);
+                    return;
+                }
+                // Auto-insert at random position
+                const randomPos = Math.floor(Math.random() * (room.gameState.deck.length + 1));
+                const autoResult = this.gameService.handleDefuse(room, defusePlayer.id, randomPos);
+                if (autoResult.success) {
+                    const autoMsg = this.chatService.sendSystemMessage(
+                        room.id,
+                        `⏰ ${defusePlayer.name} không chọn vị trí — tự động giấu Pháo Mèo ngẫu nhiên!`,
+                    );
+                    this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, autoMsg);
+                    this.server.to(room.id).emit(SocketEvent.GAME_ACTION, { action: autoResult.action });
+                    this.broadcastGameState(room);
+                    this.startTurnTimer(room);
+                }
+                this.defuseTimers.delete(room.id);
+            }, 10_000);
+
+            this.defuseTimers.set(room.id, defuseTimer);
+        } else {
+            // Reset turn timer (normal draw)
+            this.startTurnTimer(room);
+        }
+    }
     handleDefuse(
         @ConnectedSocket() client: Socket,
         @MessageBody() payload: DefusePayload,
@@ -654,6 +788,12 @@ export class GameGateway
 
         const playerResult = this.roomService.getPlayerBySocketId(client.id);
         if (!playerResult) return;
+
+        // Clear auto-defuse timer immediately
+        if (this.defuseTimers.has(room.id)) {
+            clearTimeout(this.defuseTimers.get(room.id));
+            this.defuseTimers.delete(room.id);
+        }
 
         const result = this.gameService.handleDefuse(
             room,
@@ -696,11 +836,18 @@ export class GameGateway
             return;
         }
 
+        // Clear favor timeout
+        if (this.favorTimers.has(room.id)) {
+            clearTimeout(this.favorTimers.get(room.id));
+            this.favorTimers.delete(room.id);
+        }
+
         this.server.to(room.id).emit(SocketEvent.GAME_ACTION, {
             action: result.action,
         });
 
         this.broadcastGameState(room);
+        this.startTurnTimer(room);
     }
 
     @SubscribeMessage(SocketEvent.GAME_PICK_CARD)
@@ -772,6 +919,18 @@ export class GameGateway
         }
 
         this.clearTurnTimer(room.id);
+
+        // Clear any pending action timer
+        if (this.actionTimers.has(room.id)) {
+            clearTimeout(this.actionTimers.get(room.id));
+            this.actionTimers.delete(room.id);
+        }
+
+        // Clear favor timer
+        if (this.favorTimers.has(room.id)) {
+            clearTimeout(this.favorTimers.get(room.id));
+            this.favorTimers.delete(room.id);
+        }
 
         room.status = RoomStatus.WAITING;
         room.gameState = null;

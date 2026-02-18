@@ -362,7 +362,7 @@ export class GameService {
             this.discardCards(gs, [card]);
         }
 
-        shuffleDeck(gs.deck);
+        gs.deck = shuffleDeck(gs.deck);
 
         return { success: true, action: `${player.name} xáo bài! 🔀` };
     }
@@ -604,10 +604,13 @@ export class GameService {
                 timestamp: Date.now(),
             };
 
+            // Anonymize cards so player only sees count, not types
+            const anonymizedHand: Card[] = target.hand.map((c) => ({ id: c.id, type: CardType.CAT_1 as CardType }));
+
             return {
                 success: true,
                 action: `${player.name} chơi 3 ${CARD_INFO[cards[0].type]?.name}! Đang chọn lá bài từ ${target.name}... 👀`,
-                targetHand: target.hand,
+                targetHand: anonymizedHand,
             };
         }
 
@@ -675,10 +678,7 @@ export class GameService {
                     gs.winner = alivePlayers[0].id;
                     room.status = RoomStatus.FINISHED;
 
-                    // Auto-delete room after 60 seconds
-                    setTimeout(() => {
-                        this.roomService.deleteRoom(room.id);
-                    }, 60000);
+                    // Auto-delete handled by gateway after GAME_OVER is emitted
 
                     return {
                         success: true,

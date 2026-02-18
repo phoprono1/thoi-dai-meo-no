@@ -216,6 +216,10 @@ export class RoomService {
         return undefined;
     }
 
+    removePlayerRoomMapping(socketId: string): void {
+        this.playerRooms.delete(socketId);
+    }
+
     reconnectPlayer(playerId: string, newSocketId: string): { room: Room; player: Player } | undefined {
         const result = this.getPlayerById(playerId);
         if (!result) return undefined;
