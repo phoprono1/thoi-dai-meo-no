@@ -467,6 +467,8 @@ export class GameGateway
 
         this.emitRoomListToLobby();
     }
+
+    @SubscribeMessage(SocketEvent.ROOM_LEAVE)
     handleLeaveRoom(@ConnectedSocket() client: Socket) {
         // Get room info BEFORE leaving (to check if it's their turn)
         const playerResult = this.roomService.getPlayerBySocketId(client.id);
@@ -803,6 +805,8 @@ export class GameGateway
             this.startTurnTimer(room);
         }
     }
+
+    @SubscribeMessage(SocketEvent.GAME_DEFUSE)
     handleDefuse(
         @ConnectedSocket() client: Socket,
         @MessageBody() payload: DefusePayload,
