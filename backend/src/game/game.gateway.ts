@@ -51,6 +51,10 @@ export class GameGateway
     private favorTimers: Map<string, NodeJS.Timeout> = new Map();
     // defuse timers: roomId -> timeout for auto-defuse when player is idle
     private defuseTimers: Map<string, NodeJS.Timeout> = new Map();
+    // delete timers: roomId -> timeout for auto-delete after game over
+    private deleteTimers: Map<string, NodeJS.Timeout> = new Map();
+    // lobby clients: socketIds of clients in the lobby (not in a room)
+    private lobbyClients: Set<string> = new Set();
 
     constructor(
         private readonly roomService: RoomService,
@@ -60,10 +64,13 @@ export class GameGateway
 
     handleConnection(client: Socket) {
         console.log(`Client connected: ${client.id}`);
+        // New connection starts in lobby
+        this.lobbyClients.add(client.id);
     }
 
     handleDisconnect(client: Socket) {
         console.log(`Client disconnected: ${client.id}`);
+        this.lobbyClients.delete(client.id);
         const result = this.roomService.getPlayerBySocketId(client.id);
         if (!result) return;
 
@@ -112,7 +119,7 @@ export class GameGateway
 
                 this.broadcastGameState(room);
                 this.broadcastRoomUpdate(room);
-                this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+                this.emitRoomListToLobby();
             }, DISCONNECT_GRACE_PERIOD);
 
             return;
@@ -132,7 +139,9 @@ export class GameGateway
                 this.actionTimers.delete(leftRoom.id);
             }
             this.chatService.clearRoom(leftRoom.id);
-            this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+            // Client back in lobby after last player left
+            this.lobbyClients.add(client.id);
+            this.emitRoomListToLobby();
             return;
         }
 
@@ -145,7 +154,7 @@ export class GameGateway
             `${leftPlayer.name} đã rời phòng 👋`,
         );
         this.server.to(leftRoom.id).emit(SocketEvent.CHAT_MESSAGE, sysMsg);
-        this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+        this.emitRoomListToLobby();
     }
 
     // ===================== TURN TIMER =====================
@@ -267,6 +276,14 @@ export class GameGateway
         }
     }
 
+    /** Emit ROOM_LIST only to clients currently in the lobby (not inside a room) */
+    private emitRoomListToLobby(): void {
+        const list = this.roomService.listRooms();
+        this.lobbyClients.forEach((socketId) => {
+            this.server.to(socketId).emit(SocketEvent.ROOM_LIST, list);
+        });
+    }
+
     private broadcastGameState(room: Room): void {
         if (!room.gameState) return;
         room.players.forEach((p) => {
@@ -310,10 +327,10 @@ export class GameGateway
                 this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, sysMsg);
             }
 
-            this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+            this.emitRoomListToLobby();
 
-            // Auto-delete room after 60s — clean up timers and chat too
-            setTimeout(() => {
+            // Auto-delete room after 60s
+            const deleteTimer = setTimeout(() => {
                 this.clearTurnTimer(room.id);
                 if (this.actionTimers.has(room.id)) {
                     clearTimeout(this.actionTimers.get(room.id));
@@ -321,8 +338,10 @@ export class GameGateway
                 }
                 this.chatService.clearRoom(room.id);
                 this.roomService.deleteRoom(room.id);
-                this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+                this.deleteTimers.delete(room.id);
+                this.emitRoomListToLobby();
             }, 60_000);
+            this.deleteTimers.set(room.id, deleteTimer);
 
             return true;
         }
@@ -344,6 +363,8 @@ export class GameGateway
 
         const { room, player } = result;
         client.join(room.id);
+        // Player rejoined a room — no longer in lobby
+        this.lobbyClients.delete(client.id);
 
         const sysMsg = this.chatService.sendSystemMessage(
             room.id,
@@ -387,6 +408,8 @@ export class GameGateway
         );
 
         client.join(room.id);
+        // Player left lobby, entered a room
+        this.lobbyClients.delete(client.id);
 
         const playerId = room.players[0].id;
 
@@ -400,10 +423,8 @@ export class GameGateway
             `${payload.playerName} đã tạo phòng! 🎉`,
         );
         client.emit(SocketEvent.CHAT_MESSAGE, sysMsg);
-        this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+        this.emitRoomListToLobby();
     }
-
-    @SubscribeMessage(SocketEvent.ROOM_JOIN)
     handleJoinRoom(
         @ConnectedSocket() client: Socket,
         @MessageBody() payload: JoinRoomPayload,
@@ -422,7 +443,8 @@ export class GameGateway
         }
 
         client.join(payload.roomId);
-
+        // Player left lobby, entered a room
+        this.lobbyClients.delete(client.id);
         client.emit(SocketEvent.ROOM_UPDATE, {
             room: this.roomService.toClientRoom(result.room!),
             playerId: result.playerId,
@@ -441,10 +463,8 @@ export class GameGateway
         const history = this.chatService.getMessages(payload.roomId);
         client.emit(SocketEvent.CHAT_HISTORY, history);
 
-        this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+        this.emitRoomListToLobby();
     }
-
-    @SubscribeMessage(SocketEvent.ROOM_LEAVE)
     handleLeaveRoom(@ConnectedSocket() client: Socket) {
         // Get room info BEFORE leaving (to check if it's their turn)
         const playerResult = this.roomService.getPlayerBySocketId(client.id);
@@ -484,7 +504,9 @@ export class GameGateway
             `${player.name} đã rời phòng 👋`,
         );
         this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, sysMsg);
-        this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+        // Player returned to lobby
+        this.lobbyClients.add(client.id);
+        this.emitRoomListToLobby();
     }
 
     @SubscribeMessage(SocketEvent.ROOM_LIST)
@@ -529,7 +551,7 @@ export class GameGateway
 
         this.broadcastGameState(room);
         this.broadcastRoomUpdate(room);
-        this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+        this.emitRoomListToLobby();
 
         // Start turn timer
         this.startTurnTimer(room);
@@ -932,6 +954,12 @@ export class GameGateway
             this.favorTimers.delete(room.id);
         }
 
+        // Cancel pending auto-delete timer — host restarted before room was cleaned up
+        if (this.deleteTimers.has(room.id)) {
+            clearTimeout(this.deleteTimers.get(room.id));
+            this.deleteTimers.delete(room.id);
+        }
+
         room.status = RoomStatus.WAITING;
         room.gameState = null;
         room.players.forEach((p) => {
@@ -947,6 +975,6 @@ export class GameGateway
         this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, sysMsg);
 
         this.broadcastRoomUpdate(room);
-        this.server.emit(SocketEvent.ROOM_LIST, this.roomService.listRooms());
+        this.emitRoomListToLobby();
     }
 }
