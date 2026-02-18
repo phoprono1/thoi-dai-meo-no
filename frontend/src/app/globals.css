@@ -26,10 +26,11 @@
 
 html {
   height: 100%;
+  height: 100dvh;
 }
 
 body {
-  height: 100%;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   font-family: 'Quicksand', sans-serif;
@@ -239,7 +240,7 @@ body {
 
 /* ==================== LAYOUT ==================== */
 .app-container {
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -511,7 +512,7 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr 300px;
-  height: calc(100vh - 52px);
+  height: calc(100dvh - 52px);
   overflow: hidden;
 }
 
@@ -1464,13 +1465,72 @@ body {
 /* ==================== MOBILE RESPONSIVE ==================== */
 @media (max-width: 768px) {
 
-  /* Layout Changes */
-  .game-layout {
-    grid-template-columns: 1fr;
-    height: calc(100vh - 52px);
+  /* ── Lobby ── */
+  .lobby-container {
+    padding: 16px 12px;
+    gap: 16px;
   }
 
-  /* Chat as Overlay */
+  .lobby-title {
+    font-size: 32px;
+  }
+
+  .lobby-subtitle {
+    font-size: 13px;
+  }
+
+  .lobby-panel {
+    padding: 16px;
+    border-radius: 16px;
+    max-width: 100%;
+  }
+
+  .lobby-panel h2 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .form-group {
+    margin-bottom: 10px;
+  }
+
+  /* Avatar grid: 5 cols dễ bấm hơn */
+  .avatar-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+
+  .avatar-option {
+    font-size: 22px;
+    border-radius: 10px;
+  }
+
+  /* Room list items bigger tap target */
+  .room-item {
+    padding: 14px 12px;
+  }
+
+  /* ── Page header ── */
+  .page-header {
+    padding: 8px 12px;
+  }
+
+  .page-header h1 {
+    font-size: 17px;
+  }
+
+  /* ── Game layout ── */
+  .game-layout {
+    grid-template-columns: 1fr;
+    height: calc(100dvh - 48px);
+  }
+
+  .game-main {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* ── Chat as bottom sheet overlay ── */
   .chat-panel {
     position: fixed;
     inset: 0;
@@ -1478,26 +1538,40 @@ body {
     transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-left: none;
-    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Semi-transparent backdrop when chat is open */
+  .chat-panel::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
   }
 
   .chat-panel.mobile-open {
     transform: translateY(0);
   }
 
-  .chat-close-btn {
-    display: block !important;
-    /* Force show on mobile */
+  .chat-panel.mobile-open::before {
+    opacity: 1;
   }
 
-  /* Opponent Area */
+  .chat-close-btn {
+    display: flex !important;
+  }
+
+  /* ── Opponent Area ── */
   .game-top {
     flex-wrap: nowrap;
     overflow-x: auto;
     justify-content: flex-start;
-    padding: 8px 12px;
-    gap: 8px;
-    /* Hide scrollbar */
+    padding: 6px 10px;
+    gap: 6px;
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
@@ -1507,8 +1581,9 @@ body {
   }
 
   .opponent-slot {
-    min-width: 80px;
-    padding: 4px 8px;
+    min-width: 72px;
+    flex-shrink: 0;
+    padding: 6px 8px;
   }
 
   .opponent-avatar {
@@ -1518,34 +1593,101 @@ body {
 
   .opponent-name {
     font-size: 10px;
+    max-width: 68px;
   }
 
-  /* Center Area */
+  .opponent-cards {
+    font-size: 10px;
+  }
+
+  /* ── Center Area ── */
   .game-center {
-    padding: 10px;
-    gap: 20px;
+    padding: 8px 12px;
+    gap: 16px;
   }
 
   .deck-pile,
   .discard-pile {
-    width: 80px;
-    height: 116px;
+    width: 76px;
+    height: 110px;
   }
 
   .deck-count {
     width: 20px;
     height: 20px;
     font-size: 10px;
+    bottom: 5px;
+    right: 5px;
   }
 
-  /* Player Hand */
+  .deck-label {
+    font-size: 11px;
+  }
+
+  /* Center timer smaller */
+  .center-timer .turn-timer {
+    width: 44px;
+    height: 44px;
+  }
+
+  .center-timer .timer-text {
+    font-size: 14px;
+  }
+
+  /* Action log wraps on mobile */
+  .action-log {
+    white-space: normal;
+    max-width: 240px;
+    text-align: center;
+    font-size: 12px;
+  }
+
+  /* ── Player Hand ── */
   .game-bottom {
-    padding: 8px 12px 12px;
+    padding: 6px 10px calc(10px + env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+
+  .hand-info {
+    font-size: 12px;
+  }
+
+  .hand-cards {
+    gap: 3px;
+    padding: 4px 0 4px;
+    justify-content: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .hand-cards::-webkit-scrollbar {
+    display: none;
   }
 
   .game-card {
-    width: 70px;
-    height: 100px;
+    width: 65px;
+    height: 94px;
+    flex-shrink: 0;
+    /* Prevent hover state sticking on touch */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Tooltip shows ABOVE card — on mobile flip to show below game-center */
+  .card-tooltip {
+    bottom: auto;
+    top: calc(100% + 8px);
+    z-index: 200;
+  }
+
+  /* Tone down hover lift on touch — use selected state instead */
+  .game-card:hover:not(.card-disabled) {
+    transform: translateY(-6px) scale(1.04);
+  }
+
+  .game-card.card-selected {
+    transform: translateY(-10px) scale(1.06);
   }
 
   .card-emoji {
@@ -1554,20 +1696,115 @@ body {
 
   .card-name {
     font-size: 9px;
-    margin-top: 36px;
+    margin-top: 34px;
   }
 
   .card-short-desc {
     font-size: 8px;
   }
 
-  /* Waiting Room */
+  .hand-actions {
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .hand-actions .btn {
+    font-size: 13px;
+    padding: 8px 14px;
+  }
+
+  /* ── Modals ── */
+  .modal {
+    width: 95%;
+    max-height: 85dvh;
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+
+  .modal h3 {
+    font-size: 17px;
+  }
+
+  .help-modal {
+    max-height: 90dvh;
+  }
+
+  /* ── Waiting Room ── */
+  .waiting-room {
+    padding: 16px;
+    gap: 16px;
+  }
+
   .waiting-room h2 {
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .player-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .player-card {
+    padding: 12px;
+  }
+
+  .player-avatar {
+    width: 52px;
+    height: 52px;
+  }
+
+  .player-name {
+    font-size: 13px;
+  }
+
+  /* ── Help FAB — move up to avoid home bar ── */
+  .help-fab {
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    right: 16px;
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  /* ── Error / eliminated toast ── */
+  .error-toast {
+    top: 8px;
+    right: 8px;
+    left: 8px;
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .eliminated-toast {
+    font-size: 18px;
+    padding: 18px 28px;
+    width: 90%;
+  }
+
+  /* ── Winner modal ── */
+  .winner-trophy {
+    font-size: 60px;
+  }
+
+  .winner-title {
+    font-size: 26px;
+  }
+
+  .winner-name {
+    font-size: 18px;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    min-height: 40px;
+  }
+
+  /* Larger touch buttons in header */
+  .page-header .btn-sm {
+    min-height: 36px;
+    min-width: 36px;
+    padding: 6px 10px;
   }
 }
 
@@ -1586,16 +1823,155 @@ body {
   animation: shake 0.5s ease, explode 0.5s ease;
 }
 
-@media (min-width: 769px) {
+/* desktop-only hidden on mobile by default */
+.desktop-only {
+  display: block;
+}
 
-  .desktop-only {
-    display: block;
+/* mobile-only hidden on desktop by default */
+.mobile-only {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
   }
 }
 
 @media (max-width: 768px) {
-
+  .desktop-only {
+    display: none !important;
+  }
   .mobile-only {
-    display: block;
+    display: block !important;
+  }
+}
+/* ==================== EXTRA SMALL (iPhone SE, <380px) ==================== */
+@media (max-width: 380px) {
+  .lobby-title {
+    font-size: 26px;
+  }
+
+  .lobby-panel {
+    padding: 12px;
+  }
+
+  .avatar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .game-card {
+    width: 58px;
+    height: 84px;
+  }
+
+  .card-emoji {
+    font-size: 18px;
+  }
+
+  .card-name {
+    font-size: 8px;
+    margin-top: 28px;
+  }
+
+  .deck-pile,
+  .discard-pile {
+    width: 66px;
+    height: 96px;
+  }
+
+  .page-header h1 {
+    font-size: 15px;
+  }
+
+  .opponent-slot {
+    min-width: 64px;
+  }
+}
+
+/* ==================== EXTRA SMALL (iPhone SE, <380px) ==================== */
+@media (max-width: 380px) {
+  .lobby-title {
+    font-size: 26px;
+  }
+
+  .lobby-panel {
+    padding: 12px;
+  }
+
+  .avatar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .game-card {
+    width: 58px;
+    height: 84px;
+  }
+
+  .card-emoji {
+    font-size: 18px;
+  }
+
+  .card-name {
+    font-size: 8px;
+    margin-top: 28px;
+  }
+
+  .deck-pile,
+  .discard-pile {
+    width: 66px;
+    height: 96px;
+  }
+
+  .page-header h1 {
+    font-size: 15px;
+  }
+
+  .opponent-slot {
+    min-width: 64px;
+  }
+}
+
+/* ==================== EXTRA SMALL (iPhone SE, <380px) ==================== */
+@media (max-width: 380px) {
+  .lobby-title {
+    font-size: 26px;
+  }
+
+  .lobby-panel {
+    padding: 12px;
+  }
+
+  .avatar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .game-card {
+    width: 58px;
+    height: 84px;
+  }
+
+  .card-emoji {
+    font-size: 18px;
+  }
+
+  .card-name {
+    font-size: 8px;
+    margin-top: 28px;
+  }
+
+  .deck-pile,
+  .discard-pile {
+    width: 66px;
+    height: 96px;
+  }
+
+  .page-header h1 {
+    font-size: 15px;
+  }
+
+  .opponent-slot {
+    min-width: 64px;
   }
 }

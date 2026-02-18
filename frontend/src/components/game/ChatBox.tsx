@@ -30,7 +30,7 @@ export function ChatBox({ messages, onSend, isOpen, onClose }: Props) {
     <>
       {/* Overlay backdrop for mobile */}
       <div
-        className={`modal-overlay mobile-only ${isOpen ? "active" : ""}`}
+        className="modal-overlay"
         style={{
           display: isOpen ? "flex" : "none",
           zIndex: 999,

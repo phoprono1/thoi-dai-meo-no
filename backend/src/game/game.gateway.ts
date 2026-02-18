@@ -507,11 +507,35 @@ export class GameGateway
                         });
                     }
 
-                    // Handle card picking if needed
-                    // ... (reuse logic if resolving leads to pick card)
+                    // Emit pick card event if the resolved action requires it
+                    if (
+                        room.gameState?.pendingAction?.type === 'pick_card_from_player' &&
+                        room.gameState.pendingAction.playerId === playerResult.player.id
+                    ) {
+                        const pending = room.gameState.pendingAction;
+                        if (pending.data?.source === 'discard') {
+                            // 5 different cats: pick from discard pile
+                            client.emit(SocketEvent.GAME_PICK_CARD, {
+                                cards: room.gameState.discardPile,
+                                source: 'discard',
+                            });
+                        } else if (pending.data?.source === 'hand' && pending.targetId) {
+                            // 3 same cats: pick from target's hand
+                            const target = room.players.find(p => p.id === pending.targetId);
+                            if (target) {
+                                client.emit(SocketEvent.GAME_PICK_CARD, {
+                                    cards: target.hand,
+                                    source: 'hand',
+                                });
+                            }
+                        }
+                    }
 
                     this.broadcastGameState(room);
-                    this.startTurnTimer(room); // Restart turn timer after action executes
+                    // Only restart turn timer if no further pending action (e.g. pick card)
+                    if (!room.gameState?.pendingAction) {
+                        this.startTurnTimer(room);
+                    }
                 }
                 this.actionTimers.delete(room.id);
             }, 5000); // 5 seconds delay
@@ -707,6 +731,8 @@ export class GameGateway
         });
 
         this.broadcastGameState(room);
+        // Resume turn timer after pick card completes
+        this.startTurnTimer(room);
     }
 
     // ===================== CHAT EVENTS =====================

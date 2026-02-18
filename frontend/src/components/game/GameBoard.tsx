@@ -110,6 +110,7 @@ export function GameBoard({ game, onShowHelp }: Props) {
       return true;
     if (cards.length === 5) {
       const types = new Set(cards.map((c) => c.type));
+      // Must be exactly 5 DIFFERENT cat types
       if (types.size === 5 && cards.every((c) => CAT_CARDS.includes(c.type)))
         return true;
     }
