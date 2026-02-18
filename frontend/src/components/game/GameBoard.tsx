@@ -9,6 +9,7 @@ import {
   ClientPlayer,
   Card,
   CARD_BACK_IMAGE,
+  CARD_INFO,
 } from "@/lib/types";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import SoundToggle from "@/components/SoundToggle";
@@ -39,7 +40,6 @@ export function GameBoard({ game, onShowHelp }: Props) {
   const [showTargetSelect, setShowTargetSelect] = useState(false);
 
   const isMyTurn = gs.currentPlayerId === game.playerId;
-  const isHost = game.playerId === room.hostId;
   const myPlayer = gs.players.find((p: ClientPlayer) => p.id === game.playerId);
   const opponents = gs.players.filter(
     (p: ClientPlayer) => p.id !== game.playerId,
@@ -51,6 +51,18 @@ export function GameBoard({ game, onShowHelp }: Props) {
   const hasPendingFavor =
     gs.pendingAction?.type === "favor_give" &&
     gs.pendingAction.playerId === game.playerId;
+
+  // Am I being targeted by a pending action?
+  const iAmTargeted =
+    gs.pendingAction?.targetId === game.playerId &&
+    gs.pendingAction?.type === "delayed_effect";
+  const iAmTargetedCardType = iAmTargeted
+    ? gs.pendingAction?.data?.actionType
+    : null;
+  const targeterName = iAmTargeted
+    ? gs.players.find((p: ClientPlayer) => p.id === gs.pendingAction?.playerId)
+        ?.name
+    : null;
 
   // ── Card selection helpers ──────────────────────────────────────────────────
   const toggleCard = (cardId: string) => {
@@ -213,10 +225,23 @@ export function GameBoard({ game, onShowHelp }: Props) {
           <div className="game-top">
             {opponents.map((p: ClientPlayer) => {
               const av = AVATARS.find((a) => a.id === p.avatar);
+              // Show targeting badge when this player is the active target of a pending delayed action
+              const isTargeted =
+                gs.pendingAction?.type === "delayed_effect" &&
+                gs.pendingAction?.targetId === p.id;
+              const targetedCardType = isTargeted
+                ? gs.pendingAction?.data?.actionType
+                : null;
               return (
                 <div
                   key={p.id}
-                  className={`opponent-slot ${gs.currentPlayerId === p.id ? "is-current-turn" : ""} ${!p.isAlive ? "is-dead" : ""} ${p.isDisconnected ? "is-disconnected" : ""}`}
+                  className={`opponent-slot ${
+                    gs.currentPlayerId === p.id && p.isAlive
+                      ? "is-current-turn"
+                      : ""
+                  } ${!p.isAlive ? "is-dead" : ""} ${
+                    p.isDisconnected ? "is-disconnected" : ""
+                  } ${isTargeted ? "is-targeted" : ""}`}
                 >
                   <span className="opponent-avatar">
                     {!p.isAlive ? (
@@ -235,6 +260,14 @@ export function GameBoard({ game, onShowHelp }: Props) {
                     )}
                   </span>
                   <span className="opponent-name">{p.name}</span>
+                  {isTargeted && targetedCardType && (
+                    <span
+                      className="target-badge pulse-glow"
+                      title={`Đang bị nhắm bởi ${CARD_INFO[targetedCardType as CardType]?.name ?? targetedCardType}`}
+                    >
+                      🎯 {CARD_INFO[targetedCardType as CardType]?.emoji ?? ""}
+                    </span>
+                  )}
                   <span className="opponent-cards">
                     {!p.isAlive ? (
                       "Bị loại"
@@ -391,6 +424,23 @@ export function GameBoard({ game, onShowHelp }: Props) {
                 </span>
               </div>
             )}
+            {iAmTargeted && iAmTargetedCardType && (
+              <div style={{ textAlign: "center", marginBottom: "4px" }}>
+                <span
+                  className="turn-indicator pulse-glow"
+                  style={{
+                    background: "rgba(239,68,68,0.2)",
+                    color: "#fca5a5",
+                    borderColor: "rgba(239,68,68,0.5)",
+                  }}
+                >
+                  🎯 {targeterName} đang nhắm bạn bằng{" "}
+                  {CARD_INFO[iAmTargetedCardType as CardType]?.name ??
+                    iAmTargetedCardType}
+                  !
+                </span>
+              </div>
+            )}
             {hasPendingFavor && (
               <div style={{ textAlign: "center", marginBottom: "4px" }}>
                 <span
@@ -497,7 +547,8 @@ export function GameBoard({ game, onShowHelp }: Props) {
       {game.gameOver && (
         <GameOverModal
           gameOver={game.gameOver}
-          isHost={isHost}
+          playerId={game.playerId}
+          restartVotes={game.restartVotes}
           onRestart={game.restartGame}
           onLeave={game.leaveRoom}
         />

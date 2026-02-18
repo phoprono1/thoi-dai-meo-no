@@ -55,6 +55,8 @@ export class GameGateway
     private deleteTimers: Map<string, NodeJS.Timeout> = new Map();
     // lobby clients: socketIds of clients in the lobby (not in a room)
     private lobbyClients: Set<string> = new Set();
+    // restart votes: roomId -> Set of playerIds who voted to restart
+    private restartVotes: Map<string, Set<string>> = new Map();
 
     constructor(
         private readonly roomService: RoomService,
@@ -106,13 +108,15 @@ export class GameGateway
                 this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, elimMsg);
 
                 // Check if game should end
-                this.checkGameOver(room);
+                const gameEnded = this.checkGameOver(room);
 
-                // If it was disconnected player's turn, auto-advance
-                if (room.gameState) {
-                    const currentPlayerId = room.gameState.turnOrder[room.gameState.currentPlayerIndex];
-                    if (currentPlayerId === player.id) {
-                        this.gameService.advanceTurnAfterElimination(room, player.id);
+                // Always remove eliminated player from turn order (prevents dead player showing as current)
+                // Only advance turn + restart timer if it was their turn
+                if (!gameEnded && room.gameState) {
+                    const wasTheirTurn =
+                        room.gameState.turnOrder[room.gameState.currentPlayerIndex] === player.id;
+                    this.gameService.advanceTurnAfterElimination(room, player.id);
+                    if (wasTheirTurn) {
                         this.startTurnTimer(room);
                     }
                 }
@@ -342,6 +346,8 @@ export class GameGateway
                 this.emitRoomListToLobby();
             }, 60_000);
             this.deleteTimers.set(room.id, deleteTimer);
+            // Clear any restart votes accumulated during the finished game
+            this.restartVotes.delete(room.id);
 
             return true;
         }
@@ -509,6 +515,10 @@ export class GameGateway
         );
         this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, sysMsg);
         // Player returned to lobby
+        // Also remove their restart vote if any
+        if (this.restartVotes.has(room.id)) {
+            this.restartVotes.get(room.id)!.delete(player.id);
+        }
         this.lobbyClients.add(client.id);
         this.emitRoomListToLobby();
     }
@@ -932,55 +942,73 @@ export class GameGateway
 
     // ===================== RESTART GAME =====================
 
-    @SubscribeMessage('game:restart')
+    @SubscribeMessage(SocketEvent.GAME_RESTART)
     handleRestartGame(@ConnectedSocket() client: Socket) {
         const playerResult = this.roomService.getPlayerBySocketId(client.id);
         if (!playerResult) return;
 
         const { room, player } = playerResult;
 
-        if (player.id !== room.hostId) {
-            client.emit(SocketEvent.ROOM_ERROR, {
-                error: 'Chỉ chủ phòng mới có thể bắt đầu lại!',
-            });
-            return;
+        // Only allowed when game is over (status = finished or has no active gameState)
+        if (room.status !== RoomStatus.FINISHED) return;
+
+        // Register this player's vote
+        if (!this.restartVotes.has(room.id)) {
+            this.restartVotes.set(room.id, new Set());
         }
+        const votes = this.restartVotes.get(room.id)!;
+        votes.add(player.id);
 
-        this.clearTurnTimer(room.id);
+        const totalPlayers = room.players.length;
+        const voteCount = votes.size;
 
-        // Clear any pending action timer
-        if (this.actionTimers.has(room.id)) {
-            clearTimeout(this.actionTimers.get(room.id));
-            this.actionTimers.delete(room.id);
-        }
-
-        // Clear favor timer
-        if (this.favorTimers.has(room.id)) {
-            clearTimeout(this.favorTimers.get(room.id));
-            this.favorTimers.delete(room.id);
-        }
-
-        // Cancel pending auto-delete timer — host restarted before room was cleaned up
-        if (this.deleteTimers.has(room.id)) {
-            clearTimeout(this.deleteTimers.get(room.id));
-            this.deleteTimers.delete(room.id);
-        }
-
-        room.status = RoomStatus.WAITING;
-        room.gameState = null;
-        room.players.forEach((p) => {
-            p.hand = [];
-            p.isAlive = true;
-            p.isReady = false;
+        // Broadcast current vote tally to everyone in the room
+        this.server.to(room.id).emit(SocketEvent.GAME_RESTART_VOTE, {
+            votes: voteCount,
+            total: totalPlayers,
+            voters: Array.from(votes),
         });
 
-        const sysMsg = this.chatService.sendSystemMessage(
-            room.id,
-            '🔄 Trò chơi đã được reset! Chờ bắt đầu ván mới...',
-        );
-        this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, sysMsg);
+        // All players voted — execute restart
+        if (voteCount >= totalPlayers) {
+            this.restartVotes.delete(room.id);
+            this.clearTurnTimer(room.id);
 
-        this.broadcastRoomUpdate(room);
-        this.emitRoomListToLobby();
+            if (this.actionTimers.has(room.id)) {
+                clearTimeout(this.actionTimers.get(room.id));
+                this.actionTimers.delete(room.id);
+            }
+            if (this.favorTimers.has(room.id)) {
+                clearTimeout(this.favorTimers.get(room.id));
+                this.favorTimers.delete(room.id);
+            }
+            if (this.deleteTimers.has(room.id)) {
+                clearTimeout(this.deleteTimers.get(room.id));
+                this.deleteTimers.delete(room.id);
+            }
+
+            room.status = RoomStatus.WAITING;
+            room.gameState = null;
+            room.players.forEach((p) => {
+                p.hand = [];
+                p.isAlive = true;
+                p.isReady = false;
+            });
+
+            const sysMsg = this.chatService.sendSystemMessage(
+                room.id,
+                '🔄 Tất cả đồng ý! Trò chơi đã được reset — chờ bắt đầu ván mới...',
+            );
+            this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, sysMsg);
+
+            this.broadcastRoomUpdate(room);
+            this.emitRoomListToLobby();
+        } else {
+            const sysMsg = this.chatService.sendSystemMessage(
+                room.id,
+                `🔄 ${player.name} muốn chơi lại (${voteCount}/${totalPlayers})`,
+            );
+            this.server.to(room.id).emit(SocketEvent.CHAT_MESSAGE, sysMsg);
+        }
     }
 }

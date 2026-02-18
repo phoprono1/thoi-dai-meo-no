@@ -219,9 +219,11 @@ export class GameService {
                 timestamp: Date.now(),
             };
 
+            const targetPlayer = targetId ? room.players.find(p => p.id === targetId) : null;
+            const targetSuffix = targetPlayer ? ` → 🎯 ${targetPlayer.name}` : '';
             return {
                 success: true,
-                action: `${player.name} sử dụng ${CARD_INFO[card.type].name}... ⏳ Đang chờ (5s)`,
+                action: `${player.name} sử dụng ${CARD_INFO[card.type].name}${targetSuffix}... ⏳ Đang chờ (5s)`,
             };
         }
 
@@ -912,6 +914,9 @@ export class GameService {
     ): void {
         const gs = room.gameState!;
 
+        // Check if it was the eliminated player's turn BEFORE modifying
+        const wasTheirTurn = gs.turnOrder[gs.currentPlayerIndex] === eliminatedPlayerId;
+
         // Remove eliminated player from turn order
         const elimIndex = gs.turnOrder.indexOf(eliminatedPlayerId);
         if (elimIndex !== -1) {
@@ -925,8 +930,11 @@ export class GameService {
             }
         }
 
-        gs.drawsRemaining = 1;
-        gs.lastPlayedAction = null;
+        // Only reset turn state if it was actually the eliminated player's turn
+        if (wasTheirTurn) {
+            gs.drawsRemaining = 1;
+            gs.lastPlayedAction = null;
+        }
     }
 
     private getNextAlivePlayerIndex(

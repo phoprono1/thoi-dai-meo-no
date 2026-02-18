@@ -222,6 +222,7 @@ export enum SocketEvent {
     GAME_SEE_FUTURE = 'game:seeFuture',
     GAME_PICK_CARD = 'game:pickCard',
     GAME_RESTART = 'game:restart',
+    GAME_RESTART_VOTE = 'game:restartVote',
     GAME_TURN_TIMER = 'game:turnTimer',
     CHAT_SEND = 'chat:send',
     CHAT_MESSAGE = 'chat:message',

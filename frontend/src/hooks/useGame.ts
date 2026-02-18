@@ -29,6 +29,7 @@ export function useGame() {
     const [turnTimeRemaining, setTurnTimeRemaining] = useState<number>(30);
     const [lastPlayedCards, setLastPlayedCards] = useState<string[]>([]); // for animation
     const [lastDrawn, setLastDrawn] = useState<boolean>(false); // for draw animation
+    const [restartVotes, setRestartVotes] = useState<{ votes: number; total: number; voters: string[] } | null>(null);
 
     const { playSound } = useSound();
 
@@ -62,6 +63,19 @@ export function useGame() {
                 setPlayerId(data.playerId);
                 playerIdRef.current = data.playerId;
                 sessionStorage.setItem(PLAYER_ID_KEY, data.playerId);
+            }
+            // If room switched back to waiting (restart completed), clear game state
+            if (data.room.status === 'waiting') {
+                setGameState(null);
+                setGameOver(null);
+                setRestartVotes(null);
+                setActionLog([]);
+                setFutureCards(null);
+                setPickCards(null);
+                setEliminated(null);
+                setTurnTimeRemaining(30);
+                setLastPlayedCards([]);
+                setLastDrawn(false);
             }
         };
 
@@ -129,6 +143,10 @@ export function useGame() {
             setTimeout(() => setEliminated(null), 3000);
         };
 
+        const onRestartVote = (data: { votes: number; total: number; voters: string[] }) => {
+            setRestartVotes(data);
+        };
+
         s.on(SocketEvent.ROOM_LIST, onRoomList);
         s.on(SocketEvent.ROOM_UPDATE, onRoomUpdate);
         s.on(SocketEvent.ROOM_ERROR, onRoomError);
@@ -142,6 +160,7 @@ export function useGame() {
         s.on(SocketEvent.GAME_PICK_CARD, onPickCard);
         s.on(SocketEvent.GAME_OVER, onGameOver);
         s.on(SocketEvent.GAME_PLAYER_ELIMINATED, onPlayerEliminated);
+        s.on(SocketEvent.GAME_RESTART_VOTE, onRestartVote);
 
         // Request room list
         s.emit(SocketEvent.ROOM_LIST);
@@ -160,6 +179,7 @@ export function useGame() {
             s.off(SocketEvent.GAME_PICK_CARD, onPickCard);
             s.off(SocketEvent.GAME_OVER, onGameOver);
             s.off(SocketEvent.GAME_PLAYER_ELIMINATED, onPlayerEliminated);
+            s.off(SocketEvent.GAME_RESTART_VOTE, onRestartVote);
         };
     }, []);
 
@@ -179,6 +199,7 @@ export function useGame() {
         setMessages([]);
         setActionLog([]);
         setGameOver(null);
+        setRestartVotes(null);
         sessionStorage.removeItem(PLAYER_ID_KEY);
     }, [socket]);
 
@@ -229,15 +250,7 @@ export function useGame() {
 
     const restartGame = useCallback(() => {
         socket?.emit(SocketEvent.GAME_RESTART);
-        setGameState(null);
-        setGameOver(null);
-        setActionLog([]);
-        setFutureCards(null);
-        setPickCards(null);
-        setEliminated(null);
-        setTurnTimeRemaining(30);
-        setLastPlayedCards([]);
-        setLastDrawn(false);
+        // local state reset will happen when server sends ROOM_UPDATE after all voted
     }, [socket]);
 
     const refreshRooms = useCallback(() => {
@@ -248,7 +261,7 @@ export function useGame() {
         rooms, currentRoom, playerId, gameState, messages, error,
         actionLog, futureCards, setFutureCards, pickCards, setPickCards,
         gameOver, setGameOver, eliminated, turnTimeRemaining,
-        lastPlayedCards, lastDrawn,
+        lastPlayedCards, lastDrawn, restartVotes,
         createRoom, joinRoom, leaveRoom, startGame, playCard, drawCard,
         defuse, giveCard, pickCard, sendMessage, setReady, restartGame, refreshRooms,
     };

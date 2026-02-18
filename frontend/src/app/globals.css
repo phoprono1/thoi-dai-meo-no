@@ -554,6 +554,21 @@ body {
   filter: grayscale(0.8);
 }
 
+.opponent-slot.is-targeted {
+  border-color: #ef4444;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.45);
+}
+
+.target-badge {
+  font-size: 11px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  border-radius: 20px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
 .opponent-avatar {
   width: 40px;
   height: 40px;
