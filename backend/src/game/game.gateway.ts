@@ -425,6 +425,8 @@ export class GameGateway
         client.emit(SocketEvent.CHAT_MESSAGE, sysMsg);
         this.emitRoomListToLobby();
     }
+
+    @SubscribeMessage(SocketEvent.ROOM_JOIN)
     handleJoinRoom(
         @ConnectedSocket() client: Socket,
         @MessageBody() payload: JoinRoomPayload,
