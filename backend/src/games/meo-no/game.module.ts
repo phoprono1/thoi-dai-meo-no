@@ -8,4 +8,4 @@ import { ChatService } from './chat.service.js';
     providers: [GameGateway, GameService, RoomService, ChatService],
     exports: [GameService, RoomService, ChatService],
 })
-export class GameModule { }
+export class MeoNoModule { }

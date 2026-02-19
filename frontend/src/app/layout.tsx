@@ -6,8 +6,8 @@ import { SoundProvider } from "@/contexts/SoundContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Mèo Nổ Online",
-  description: "Trò chơi Mèo Nổ phiên bản Tết",
+  title: "Ngạo Thiên 88",
+  description: "Bộ sưu tập mini-games online dành cho bạn bè",
   viewport: {
     width: "device-width",
     initialScale: 1,

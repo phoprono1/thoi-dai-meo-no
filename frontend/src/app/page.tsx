@@ -1,294 +1,108 @@
-"use client";
+import Link from "next/link";
 
-import { useState, useEffect } from "react";
-import { useGame } from "@/hooks/useGame";
-import { AVATARS, ClientRoom } from "@/lib/types";
-import SoundToggle from "@/components/SoundToggle";
-import ImageWithFallback from "@/components/ImageWithFallback";
-import { HelpModal } from "@/components/game/HelpModal";
-import { WaitingRoom } from "@/components/game/WaitingRoom";
-import { GameBoard } from "@/components/game/GameBoard";
+const GAMES = [
+  {
+    id: "meo-no",
+    href: "/meo-no",
+    emoji: "🐱💣",
+    name: "Mèo Nổ",
+    subtitle: "Exploding Kittens",
+    description:
+      "Trò chơi bài chiến thuật – tránh bốc phải Pháo Mèo! Hỗ trợ 2–10 người chơi cùng lúc.",
+    tag: "2–10 người",
+    tagColor: "#f59e0b",
+    available: true,
+    theme: "Tết Bính Ngọ 2026",
+  },
+  {
+    id: "co-ty-phu",
+    href: "/co-ty-phu",
+    emoji: "🏦🎲",
+    name: "Cờ Tỷ Phú",
+    subtitle: "Vietnamese Monopoly",
+    description:
+      "Độc quyền bất động sản Việt Nam – mua đất, xây nhà, kiếm tiền thuê và trở thành tỷ phú số 1!",
+    tag: "2–8 người",
+    tagColor: "#22c55e",
+    available: true,
+    theme: "Phiên bản Việt Nam",
+  },
+];
 
-export default function Home() {
-  const game = useGame();
-  const [playerName, setPlayerName] = useState("");
-  const [playerAvatar, setPlayerAvatar] = useState("avatar_1");
-  const [showCreate, setShowCreate] = useState(false);
-  const [showJoin, setShowJoin] = useState<string | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
-  const [roomName, setRoomName] = useState("");
-  const [roomPassword, setRoomPassword] = useState("");
-  const [joinPassword, setJoinPassword] = useState("");
-  const [maxPlayers, setMaxPlayers] = useState(5);
+const COMING_SOON = [
+  { emoji: "🃏", name: "Bài Cào", description: "Sắp ra mắt..." },
+  { emoji: "🎲", name: "Cờ Cá Ngựa", description: "Sắp ra mắt..." },
+  { emoji: "🀄", name: "Mạt Chược", description: "Sắp ra mắt..." },
+];
 
-  // Auto-refresh rooms list every 3s when in lobby
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!game.currentRoom) game.refreshRooms();
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── View: Game Board ──────────────────────────────────────────────────────
-  if (game.currentRoom && game.gameState) {
-    return (
-      <>
-        <GameBoard game={game} onShowHelp={() => setShowHelp(true)} />
-        {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
-      </>
-    );
-  }
-
-  // ── View: Waiting Room ────────────────────────────────────────────────────
-  if (game.currentRoom) {
-    return (
-      <>
-        <WaitingRoom game={game} onShowHelp={() => setShowHelp(true)} />
-        {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
-      </>
-    );
-  }
-
-  // ── View: Lobby ───────────────────────────────────────────────────────────
+export default function HubPage() {
   return (
-    <>
-      {game.error && <div className="error-toast">⚠️ {game.error}</div>}
-
-      <div className="lobby-container">
-        <div className="float-anim" style={{ fontSize: "64px" }}>
-          🐱💣
-        </div>
-        <h1 className="lobby-title">Mèo Nổ Online</h1>
-        <p className="lobby-subtitle">🎋 Phiên bản Tết Bính Ngọ 2026 🎋</p>
-
-        {/* Player Setup */}
-        <div className="lobby-panel">
-          <h2>👤 Thông tin người chơi</h2>
-          <div className="form-group">
-            <label>Tên của bạn</label>
-            <input
-              className="input"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              placeholder="Nhập tên..."
-              maxLength={20}
-            />
-          </div>
-          <div className="form-group">
-            <label>Chọn Avatar</label>
-            <div className="avatar-grid">
-              {AVATARS.map((av) => (
-                <button
-                  key={av.id}
-                  className={`avatar-option ${playerAvatar === av.id ? "selected" : ""}`}
-                  onClick={() => setPlayerAvatar(av.id)}
-                  title={av.name}
-                >
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      position: "relative",
-                    }}
-                  >
-                    <ImageWithFallback
-                      src={av.image!}
-                      alt={av.name}
-                      fill
-                      className="avatar-image"
-                      sizes="(max-width: 768px) 25vw, 100px"
-                    />
-                  </div>
-                </button>
-              ))}
-            </div>
+    <div className="hub-root">
+      {/* Header */}
+      <header className="hub-header">
+        <div className="hub-logo-wrap">
+          <span className="hub-logo-icon">🎮</span>
+          <div>
+            <h1 className="hub-logo-title">Ngạo Thiên 88</h1>
+            <p className="hub-logo-sub">Mini-games online dành cho bạn bè</p>
           </div>
         </div>
+      </header>
 
-        {/* Room Actions */}
-        <div style={{ display: "flex", gap: "12px" }}>
-          <button
-            className="btn btn-gold btn-lg"
-            onClick={() => setShowCreate(true)}
-            disabled={!playerName.trim()}
-          >
-            🏠 Tạo Phòng
-          </button>
-          <button
-            className="btn btn-outline btn-lg"
-            onClick={() => game.refreshRooms()}
-          >
-            🔄 Làm Mới
-          </button>
-          <button
-            className="btn btn-outline btn-lg"
-            onClick={() => setShowHelp(true)}
-          >
-            ❓ Luật Chơi
-          </button>
-          <SoundToggle />
-        </div>
-
-        {/* Room List */}
-        {game.rooms.length > 0 && (
-          <div className="lobby-panel">
-            <h2>🏠 Danh sách phòng ({game.rooms.length})</h2>
-            <div className="room-list">
-              {game.rooms.map((room: ClientRoom) => (
-                <div key={room.id} className="room-item">
-                  <div className="room-info">
-                    <span className="room-name">
-                      {room.hasPassword ? "🔒 " : ""}
-                      {room.name}
-                    </span>
-                    <span className="room-meta">
-                      {room.players.length}/{room.maxPlayers} người •{" "}
-                      {room.status === "waiting"
-                        ? "⏳ Đang chờ"
-                        : room.status === "playing"
-                          ? "🎮 Đang chơi"
-                          : "✅ Kết thúc"}
+      <main className="hub-main">
+        {/* Section: Available games */}
+        <section>
+          <h2 className="hub-section-title">
+            <span>🎯</span> Chơi Ngay
+          </h2>
+          <div className="hub-games-grid">
+            {GAMES.map((game) => (
+              <Link key={game.id} href={game.href} className="hub-game-card">
+                <div className="hub-game-emoji">{game.emoji}</div>
+                <div className="hub-game-info">
+                  <div className="hub-game-name-row">
+                    <span className="hub-game-name">{game.name}</span>
+                    <span
+                      className="hub-game-tag"
+                      style={{
+                        background: game.tagColor + "22",
+                        color: game.tagColor,
+                        borderColor: game.tagColor + "55",
+                      }}
+                    >
+                      {game.tag}
                     </span>
                   </div>
-                  {room.status === "waiting" &&
-                    room.players.length < room.maxPlayers && (
-                      <button
-                        className="btn btn-primary btn-sm"
-                        disabled={!playerName.trim()}
-                        onClick={() => {
-                          if (room.hasPassword) {
-                            setShowJoin(room.id);
-                          } else {
-                            game.joinRoom(playerName, playerAvatar, room.id);
-                          }
-                        }}
-                      >
-                        Vào
-                      </button>
-                    )}
+                  <p className="hub-game-subtitle">{game.subtitle}</p>
+                  <p className="hub-game-desc">{game.description}</p>
+                  <p className="hub-game-theme">🎋 {game.theme}</p>
                 </div>
-              ))}
-            </div>
+                <div className="hub-game-arrow">▶</div>
+              </Link>
+            ))}
           </div>
-        )}
+        </section>
 
-        {game.rooms.length === 0 && (
-          <p style={{ color: "var(--tet-text-muted)", fontSize: "14px" }}>
-            Chưa có phòng nào. Hãy tạo phòng mới! 🎉
-          </p>
-        )}
-      </div>
-
-      {/* Help Modal */}
-      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
-
-      {/* Create Room Modal */}
-      {showCreate && (
-        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>🏠 Tạo Phòng Mới</h3>
-            <div className="form-group">
-              <label>Tên phòng</label>
-              <input
-                className="input"
-                value={roomName}
-                onChange={(e) => setRoomName(e.target.value)}
-                placeholder="VD: Phòng Tết Vui Vẻ"
-                maxLength={30}
-              />
-            </div>
-            <div className="form-group">
-              <label>Mật khẩu (tùy chọn)</label>
-              <input
-                className="input"
-                value={roomPassword}
-                onChange={(e) => setRoomPassword(e.target.value)}
-                placeholder="Để trống nếu không cần"
-                type="password"
-              />
-            </div>
-            <div className="form-group">
-              <label>Số người tối đa: {maxPlayers}</label>
-              <input
-                type="range"
-                min={2}
-                max={10}
-                value={maxPlayers}
-                onChange={(e) => setMaxPlayers(Number(e.target.value))}
-                style={{ width: "100%" }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
-              <button
-                className="btn btn-gold"
-                style={{ flex: 1 }}
-                disabled={!roomName.trim()}
-                onClick={() => {
-                  game.createRoom(
-                    playerName,
-                    playerAvatar,
-                    roomName,
-                    roomPassword,
-                    maxPlayers,
-                  );
-                  setShowCreate(false);
-                }}
-              >
-                Tạo Phòng
-              </button>
-              <button
-                className="btn btn-outline"
-                onClick={() => setShowCreate(false)}
-              >
-                Hủy
-              </button>
-            </div>
+        {/* Section: Coming soon */}
+        <section style={{ marginTop: "40px" }}>
+          <h2 className="hub-section-title">
+            <span>🚀</span> Sắp Ra Mắt
+          </h2>
+          <div className="hub-coming-grid">
+            {COMING_SOON.map((g) => (
+              <div key={g.name} className="hub-coming-card">
+                <span className="hub-coming-emoji">{g.emoji}</span>
+                <span className="hub-coming-name">{g.name}</span>
+                <span className="hub-coming-desc">{g.description}</span>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        </section>
+      </main>
 
-      {/* Join with Password Modal */}
-      {showJoin && (
-        <div className="modal-overlay" onClick={() => setShowJoin(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>🔒 Nhập Mật Khẩu</h3>
-            <div className="form-group">
-              <input
-                className="input"
-                value={joinPassword}
-                onChange={(e) => setJoinPassword(e.target.value)}
-                placeholder="Nhập mật khẩu phòng..."
-                type="password"
-                autoFocus
-              />
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                className="btn btn-gold"
-                style={{ flex: 1 }}
-                onClick={() => {
-                  game.joinRoom(
-                    playerName,
-                    playerAvatar,
-                    showJoin,
-                    joinPassword,
-                  );
-                  setShowJoin(null);
-                  setJoinPassword("");
-                }}
-              >
-                Vào Phòng
-              </button>
-              <button
-                className="btn btn-outline"
-                onClick={() => setShowJoin(null)}
-              >
-                Hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+      <footer className="hub-footer">
+        <p>🐾 Thời Đại Game • Tết Bính Ngọ 2026</p>
+      </footer>
+    </div>
   );
 }
