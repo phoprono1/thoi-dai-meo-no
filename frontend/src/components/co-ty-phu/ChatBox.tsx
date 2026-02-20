@@ -15,10 +15,13 @@ interface Props {
 
 export default function ChatBox({ messages, onSend, myName }: Props) {
   const [input, setInput] = useState("");
-  const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll only within the messages container — never touch window scroll
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages.length]);
 
   const handleSend = () => {
@@ -29,6 +32,7 @@ export default function ChatBox({ messages, onSend, myName }: Props) {
 
   return (
     <div
+      className="ctp-chatbox"
       style={{
         width: 280,
         display: "flex",
@@ -70,6 +74,7 @@ export default function ChatBox({ messages, onSend, myName }: Props) {
 
       {/* Messages */}
       <div
+        ref={scrollRef}
         style={{
           flex: 1,
           overflowY: "auto",
@@ -148,7 +153,6 @@ export default function ChatBox({ messages, onSend, myName }: Props) {
             </div>
           );
         })}
-        <div ref={endRef} />
       </div>
 
       {/* Divider */}

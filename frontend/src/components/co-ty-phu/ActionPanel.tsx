@@ -64,6 +64,7 @@ export default function ActionPanel({
 
   return (
     <div
+      className="ctp-action-panel"
       style={{
         width: 280,
         display: "flex",
@@ -289,130 +290,134 @@ export default function ActionPanel({
               lineHeight: 1.6,
             }}
           >
-            Đang quan sát trận đấu.<br />
+            Đang quan sát trận đấu.
+            <br />
             Bạn vẫn có thể xem bàn cờ và nhắn tin!
           </div>
         </div>
       ) : (
         <>
-      {/* === Tabs === */}
-      <div
-        style={{
-          display: "flex",
-          backgroundColor: "#0d1f12",
-          borderBottom: "1px solid #1a3a22",
-        }}
-      >
-        {(["actions", "manage"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
+          {/* === Tabs === */}
+          <div
             style={{
-              flex: 1,
-              padding: "9px 4px",
-              fontSize: 12,
-              fontWeight: 600,
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.15s",
-              backgroundColor: tab === t ? "#14532d" : "transparent",
-              color: tab === t ? "#86efac" : "#6b7280",
-              borderBottom:
-                tab === t ? "2px solid #4ade80" : "2px solid transparent",
-              marginBottom: -1,
+              display: "flex",
+              backgroundColor: "#0d1f12",
+              borderBottom: "1px solid #1a3a22",
             }}
           >
-            {t === "actions" ? "🎲 Hành động" : "🏠 Quản lý"}
-            {t === "manage" && myOwned.length > 0 && (
-              <span
+            {(["actions", "manage"] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
                 style={{
-                  marginLeft: 4,
-                  backgroundColor: "#166534",
-                  color: "#86efac",
-                  fontSize: 10,
-                  padding: "0 5px",
-                  borderRadius: 10,
+                  flex: 1,
+                  padding: "9px 4px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  backgroundColor: tab === t ? "#14532d" : "transparent",
+                  color: tab === t ? "#86efac" : "#6b7280",
+                  borderBottom:
+                    tab === t ? "2px solid #4ade80" : "2px solid transparent",
+                  marginBottom: -1,
                 }}
               >
-                {myOwned.length}
-              </span>
+                {t === "actions" ? "🎲 Hành động" : "🏠 Quản lý"}
+                {t === "manage" && myOwned.length > 0 && (
+                  <span
+                    style={{
+                      marginLeft: 4,
+                      backgroundColor: "#166534",
+                      color: "#86efac",
+                      fontSize: 10,
+                      padding: "0 5px",
+                      borderRadius: 10,
+                    }}
+                  >
+                    {myOwned.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* === Content === */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "10px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              minHeight: 280,
+            }}
+          >
+            {tab === "actions" ? (
+              <ActionsTab
+                gameState={gameState}
+                myPlayer={myPlayer}
+                isMyTurn={isMyTurn}
+                canRoll={canRoll}
+                canEndTurn={canEndTurn}
+                isSellToPay={isSellToPay}
+                onRollDice={onRollDice}
+                onBuyProperty={onBuyProperty}
+                onSkipBuy={onSkipBuy}
+                onPayJail={onPayJail}
+                onUseJailCard={onUseJailCard}
+                onEndTurn={onEndTurn}
+              />
+            ) : (
+              <ManageTab
+                myOwned={myOwned}
+                gameState={gameState}
+                myPlayer={myPlayer}
+                isMyTurn={isMyTurn}
+                isSellToPay={isSellToPay}
+                onBuild={onBuild}
+                onMortgage={onMortgage}
+                onSellProperty={onSellProperty}
+              />
             )}
-          </button>
-        ))}
-      </div>
+          </div>
 
-      {/* === Content === */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "10px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-          minHeight: 280,
-        }}
-      >
-        {tab === "actions" ? (
-          <ActionsTab
-            gameState={gameState}
-            myPlayer={myPlayer}
-            isMyTurn={isMyTurn}
-            canRoll={canRoll}
-            canEndTurn={canEndTurn}
-            isSellToPay={isSellToPay}
-            onRollDice={onRollDice}
-            onBuyProperty={onBuyProperty}
-            onSkipBuy={onSkipBuy}
-            onPayJail={onPayJail}
-            onUseJailCard={onUseJailCard}
-            onEndTurn={onEndTurn}
-          />
-        ) : (
-          <ManageTab
-            myOwned={myOwned}
-            gameState={gameState}
-            myPlayer={myPlayer}
-            isMyTurn={isMyTurn}
-            isSellToPay={isSellToPay}
-            onBuild={onBuild}
-            onMortgage={onMortgage}
-            onSellProperty={onSellProperty}
-          />
-        )}
-      </div>
-
-      {/* === Surrender Button === */}
-      <div
-        style={{
-          padding: "6px 10px 10px",
-          borderTop: "1px solid rgba(255,255,255,0.05)",
-        }}
-      >
-        <button
-          onClick={() => {
-            if (window.confirm("Bỏ cuộc? Bạn sẽ bị tính là phá sản và trở thành khán giả.")) {
-              onSurrender();
-            }
-          }}
-          style={{
-            width: "100%",
-            padding: "6px",
-            borderRadius: 6,
-            border: "1px solid rgba(239,68,68,0.3)",
-            cursor: "pointer",
-            background: "rgba(239,68,68,0.08)",
-            color: "#f87171",
-            fontWeight: 600,
-            fontSize: 11,
-          }}
-        >
-          🏳️ Bỏ cuộc
-        </button>
-      </div>
+          {/* === Surrender Button === */}
+          <div
+            style={{
+              padding: "6px 10px 10px",
+              borderTop: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <button
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Bỏ cuộc? Bạn sẽ bị tính là phá sản và trở thành khán giả.",
+                  )
+                ) {
+                  onSurrender();
+                }
+              }}
+              style={{
+                width: "100%",
+                padding: "6px",
+                borderRadius: 6,
+                border: "1px solid rgba(239,68,68,0.3)",
+                cursor: "pointer",
+                background: "rgba(239,68,68,0.08)",
+                color: "#f87171",
+                fontWeight: 600,
+                fontSize: 11,
+              }}
+            >
+              🏳️ Bỏ cuộc
+            </button>
+          </div>
         </>
       )}
-
     </div>
   );
 }

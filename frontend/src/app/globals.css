@@ -2135,8 +2135,123 @@ body {
     font-size: 17px;
   }
 
+  .hub-game-desc {
+    font-size: 12px;
+  }
+
   .hub-coming-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .hub-game-arrow {
+    display: none;
+  }
+}
+
+/* ==================== CỜ TỶ PHÚ – RESPONSIVE GAME LAYOUT ==================== */
+
+/* Desktop: outer wrapper locks to full viewport height */
+.ctp-root {
+  /* h-dvh + overflow-hidden applied via Tailwind — kept for desktop */
+}
+
+.ctp-game-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0; /* allow flex child to shrink and enable proper scroll container */
+  overflow: auto;
+  padding: 12px;
+  gap: 12px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* Board wrapper – fixed to board size on desktop so scaler fills it */
+.ctp-board-wrap {
+  flex-shrink: 0;
+  width: 756px;
+}
+
+/* Sidebar: ActionPanel + ChatBox stack */
+.ctp-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+  width: 280px;
+}
+
+/* Override inline widths on mobile via !important (inline style wins otherwise) */
+.ctp-action-panel,
+.ctp-chatbox {
+  width: 280px !important;
+}
+
+/* ── Tablet / small desktop (≤ 900px): stack board above sidebar ── */
+@media (max-width: 900px) {
+  /*
+   * On mobile, switch from nested-scroll-container to full-page scroll.
+   * This prevents the board top from being clipped by the h-dvh outer wrapper.
+   * Also unlock body scroll so the overflowing page content is accessible.
+   */
+  body:has(.ctp-root) {
+    height: auto;
+    min-height: 100dvh;
+    overflow: auto;
+    overflow-x: hidden;
+  }
+
+  .ctp-root {
+    height: auto !important;
+    min-height: 100dvh;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+  }
+
+  .ctp-game-layout {
+    flex: none;
+    overflow: visible !important;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 24px;
+  }
+
+  .ctp-board-wrap {
+    width: 100%;
+    max-width: 760px;
+  }
+
+  .ctp-sidebar {
+    width: 100%;
+    max-width: 760px;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .ctp-action-panel,
+  .ctp-chatbox {
+    flex: 1 1 280px;
+    width: auto !important;
+    min-width: 260px;
+  }
+}
+
+/* ── Mobile (≤ 540px): single-column sidebar ── */
+@media (max-width: 540px) {
+  .ctp-game-layout {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .ctp-sidebar {
+    flex-direction: column;
+  }
+
+  .ctp-action-panel,
+  .ctp-chatbox {
+    flex: none;
+    width: 100% !important;
+    min-width: unset;
   }
 }
 /* ==================== EXTRA SMALL (iPhone SE, <380px) ==================== */

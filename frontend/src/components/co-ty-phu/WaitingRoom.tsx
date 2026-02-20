@@ -79,7 +79,7 @@ export default function CoTyPhuWaitingRoom({
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: `radial-gradient(ellipse at 50% 0%, #0d2a18 0%, ${BG0} 65%)`,
         display: "flex",
         flexDirection: "column",

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useCoTyPhu } from "@/hooks/useCoTyPhu";
 import Board from "@/components/co-ty-phu/Board";
 import ActionPanel from "@/components/co-ty-phu/ActionPanel";
@@ -89,7 +89,7 @@ export default function CoTyPhuPage() {
 
   // ── Game board ───────────────────────────────────────────────
   return (
-    <div className="h-screen bg-gray-950 text-white flex flex-col overflow-hidden">
+    <div className="ctp-root h-dvh bg-gray-950 text-white flex flex-col overflow-hidden">
       {error && <ErrorToast msg={error} />}
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       {gameOver && (
@@ -107,7 +107,9 @@ export default function CoTyPhuPage() {
           ← Hub
         </Link>
         <div className="text-yellow-400 font-bold">🏦 Cờ Tỷ Phú</div>
-        <div className="text-gray-500 text-xs">Phòng: {currentRoom.id}</div>
+        <div className="hidden sm:block text-gray-500 text-xs">
+          Phòng: {currentRoom.id}
+        </div>
         <div className="flex-1" />
         <button
           onClick={() => setShowHelp(true)}
@@ -131,14 +133,15 @@ export default function CoTyPhuPage() {
                 }}
               />
             </div>
-            <span className="text-gray-300 text-xs truncate max-w-[48px]">
+            <span className="hidden sm:inline text-gray-300 text-xs truncate max-w-[48px]">
               {p.name}
             </span>
             <span
               className={
-                p.id === gameState.currentPlayerId
+                "hidden sm:inline " +
+                (p.id === gameState.currentPlayerId
                   ? "text-yellow-300 font-bold"
-                  : "text-gray-400"
+                  : "text-gray-400")
               }
             >
               {formatMoney(p.money)}
@@ -148,11 +151,13 @@ export default function CoTyPhuPage() {
       </div>
 
       {/* Main layout */}
-      <div className="flex flex-1 overflow-auto p-3 gap-3 justify-center items-start">
-        <div className="flex-shrink-0">
-          <Board gameState={gameState} />
+      <div className="ctp-game-layout">
+        <div className="ctp-board-wrap">
+          <BoardScaler>
+            <Board gameState={gameState} />
+          </BoardScaler>
         </div>
-        <div className="flex flex-col gap-3 flex-shrink-0">
+        <div className="ctp-sidebar">
           <ActionPanel
             gameState={gameState}
             myPlayerId={playerId ?? ""}
@@ -168,6 +173,52 @@ export default function CoTyPhuPage() {
             onSurrender={surrender}
           />
           <ChatBox messages={messages} onSend={sendChat} myName={myName} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const BOARD_SIZE = 756;
+
+function BoardScaler({ children }: { children: React.ReactNode }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const update = () => {
+      if (containerRef.current) {
+        const w = containerRef.current.offsetWidth;
+        setScale(Math.min(1, w / BOARD_SIZE));
+      }
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const scaled = Math.round(BOARD_SIZE * scale);
+  return (
+    <div ref={containerRef} style={{ width: "100%" }}>
+      <div
+        style={{
+          width: scaled,
+          height: scaled,
+          overflow: "hidden",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            width: BOARD_SIZE,
+            height: BOARD_SIZE,
+            ["--board-scale" as string]: scale,
+          }}
+        >
+          {children}
         </div>
       </div>
     </div>

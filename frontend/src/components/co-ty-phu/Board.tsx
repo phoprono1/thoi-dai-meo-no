@@ -367,12 +367,12 @@ export default function Board({ gameState, onTileClick }: Props) {
             minHeight: 0,
           }}
         >
-          {gameState.log.slice(-5).map((entry, i, arr) => (
+          {gameState.log.slice(-3).map((entry, i, arr) => (
             <div
               key={i}
               style={{
-                fontSize: i === arr.length - 1 ? 12 : 10,
-                lineHeight: 1.5,
+                fontSize: `calc(${i === arr.length - 1 ? 13 : 11}px / var(--board-scale, 1))`,
+                lineHeight: 1.45,
                 color: i === arr.length - 1 ? "#111827" : "#6b7280",
                 fontWeight: i === arr.length - 1 ? 700 : 400,
                 overflow: "hidden",
