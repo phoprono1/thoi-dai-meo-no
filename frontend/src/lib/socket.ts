@@ -9,7 +9,16 @@ export function getSocket(): Socket {
         socket = io(BACKEND_URL, {
             transports: ['websocket', 'polling'],
             autoConnect: true,
+            reconnection: true,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 10000,
         });
+    } else if (socket.disconnected) {
+        // Socket exists but fully disconnected (not actively reconnecting)
+        // This can happen when mobile OS kills WebSocket or after navigation
+        socket.connect();
     }
     return socket;
 }

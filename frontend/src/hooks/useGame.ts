@@ -8,13 +8,11 @@ import {
     ChatMessage,
     Card,
 } from '@/lib/types';
-import type { Socket } from 'socket.io-client';
 import { useSound } from '@/contexts/SoundContext';
 
 const PLAYER_ID_KEY = 'meo_no_player_id';
 
 export function useGame() {
-    const [socket, setSocket] = useState<Socket | null>(null);
     const [rooms, setRooms] = useState<ClientRoom[]>([]);
     const [currentRoom, setCurrentRoom] = useState<ClientRoom | null>(null);
     const [playerId, setPlayerId] = useState<string | null>(null);
@@ -45,8 +43,6 @@ export function useGame() {
 
     useEffect(() => {
         const s = getSocket();
-        setSocket(s);
-
         // Try to reconnect from saved playerId
         const savedPlayerId = sessionStorage.getItem(PLAYER_ID_KEY);
         if (savedPlayerId) {
@@ -186,15 +182,15 @@ export function useGame() {
     }, []);
 
     const createRoom = useCallback((playerName: string, playerAvatar: string, roomName: string, password: string, maxPlayers: number) => {
-        socket?.emit(SocketEvent.ROOM_CREATE, { playerName, playerAvatar, roomName, password: password || undefined, maxPlayers });
-    }, [socket]);
+        getSocket().emit(SocketEvent.ROOM_CREATE, { playerName, playerAvatar, roomName, password: password || undefined, maxPlayers });
+    }, []);
 
     const joinRoom = useCallback((playerName: string, playerAvatar: string, roomId: string, password?: string) => {
-        socket?.emit(SocketEvent.ROOM_JOIN, { playerName, playerAvatar, roomId, password });
-    }, [socket]);
+        getSocket().emit(SocketEvent.ROOM_JOIN, { playerName, playerAvatar, roomId, password });
+    }, []);
 
     const leaveRoom = useCallback(() => {
-        socket?.emit(SocketEvent.ROOM_LEAVE);
+        getSocket().emit(SocketEvent.ROOM_LEAVE);
         setCurrentRoom(null);
         setPlayerId(null);
         setGameState(null);
@@ -204,57 +200,54 @@ export function useGame() {
         setIsSpectating(false);
         setRestartVotes(null);
         sessionStorage.removeItem(PLAYER_ID_KEY);
-    }, [socket]);
+    }, []);
 
     const startGame = useCallback(() => {
-        socket?.emit(SocketEvent.GAME_START);
-    }, [socket]);
+        getSocket().emit(SocketEvent.GAME_START);
+    }, []);
 
     const playCard = useCallback((cardIds: string[], targetId?: string) => {
         if (!currentRoom) return;
-        // Trigger play animation
         setLastPlayedCards(cardIds);
         setTimeout(() => setLastPlayedCards([]), 600);
-        socket?.emit(SocketEvent.GAME_PLAY_CARD, { roomId: currentRoom.id, cardIds, targetId });
-    }, [socket, currentRoom]);
+        getSocket().emit(SocketEvent.GAME_PLAY_CARD, { roomId: currentRoom.id, cardIds, targetId });
+    }, [currentRoom]);
 
     const drawCard = useCallback(() => {
         if (!currentRoom) return;
-        // Trigger draw animation
         setLastDrawn(true);
         setTimeout(() => setLastDrawn(false), 600);
-        socket?.emit(SocketEvent.GAME_DRAW_CARD, { roomId: currentRoom.id });
-    }, [socket, currentRoom]);
+        getSocket().emit(SocketEvent.GAME_DRAW_CARD, { roomId: currentRoom.id });
+    }, [currentRoom]);
 
     const defuse = useCallback((insertPosition: number) => {
         if (!currentRoom) return;
-        socket?.emit(SocketEvent.GAME_DEFUSE, { roomId: currentRoom.id, insertPosition });
-    }, [socket, currentRoom]);
+        getSocket().emit(SocketEvent.GAME_DEFUSE, { roomId: currentRoom.id, insertPosition });
+    }, [currentRoom]);
 
     const giveCard = useCallback((cardId: string) => {
         if (!currentRoom) return;
-        socket?.emit(SocketEvent.GAME_GIVE_CARD, { roomId: currentRoom.id, cardId });
-    }, [socket, currentRoom]);
+        getSocket().emit(SocketEvent.GAME_GIVE_CARD, { roomId: currentRoom.id, cardId });
+    }, [currentRoom]);
 
     const pickCard = useCallback((cardId: string) => {
         if (!currentRoom) return;
-        socket?.emit(SocketEvent.GAME_PICK_CARD, { roomId: currentRoom.id, cardId });
+        getSocket().emit(SocketEvent.GAME_PICK_CARD, { roomId: currentRoom.id, cardId });
         setPickCards(null);
-    }, [socket, currentRoom]);
+    }, [currentRoom]);
 
     const sendMessage = useCallback((message: string) => {
         if (!currentRoom) return;
-        socket?.emit(SocketEvent.CHAT_SEND, { roomId: currentRoom.id, message });
-    }, [socket, currentRoom]);
+        getSocket().emit(SocketEvent.CHAT_SEND, { roomId: currentRoom.id, message });
+    }, [currentRoom]);
 
     const setReady = useCallback(() => {
-        socket?.emit(SocketEvent.GAME_READY);
-    }, [socket]);
+        getSocket().emit(SocketEvent.GAME_READY);
+    }, []);
 
     const restartGame = useCallback(() => {
-        socket?.emit(SocketEvent.GAME_RESTART);
-        // local state reset will happen when server sends ROOM_UPDATE after all voted
-    }, [socket]);
+        getSocket().emit(SocketEvent.GAME_RESTART);
+    }, []);
 
     const spectate = useCallback(() => {
         setIsSpectating(true);
@@ -262,8 +255,8 @@ export function useGame() {
     }, []);
 
     const refreshRooms = useCallback(() => {
-        socket?.emit(SocketEvent.ROOM_LIST);
-    }, [socket]);
+        getSocket().emit(SocketEvent.ROOM_LIST);
+    }, []);
 
     return {
         rooms, currentRoom, playerId, gameState, messages, error,
