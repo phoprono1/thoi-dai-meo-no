@@ -2201,6 +2201,14 @@ body {
     overflow-x: hidden;
   }
 
+  body:has(.ctp-lobby),
+  body:has(.ctp-waiting) {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
   .ctp-root {
     height: auto !important;
     min-height: 100dvh;

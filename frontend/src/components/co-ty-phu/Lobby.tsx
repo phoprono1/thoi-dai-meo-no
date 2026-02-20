@@ -252,14 +252,15 @@ export default function CoTyPhuLobby({
 
   return (
     <div
+      className="ctp-lobby"
       style={{
         minHeight: "100dvh",
         background: `radial-gradient(ellipse at 50% 0%, #0d2a18 0%, ${BG0} 65%)`,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        padding: "24px 16px",
+        justifyContent: "flex-start",
+        padding: "40px 16px 40px",
         color: "#e2e8f0",
         fontFamily: "system-ui, sans-serif",
       }}
