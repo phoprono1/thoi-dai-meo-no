@@ -154,7 +154,7 @@ export default function CoTyPhuPage() {
       <div className="ctp-game-layout">
         <div className="ctp-board-wrap">
           <BoardScaler>
-            <Board gameState={gameState} />
+            <Board gameState={gameState} myPlayerId={playerId ?? ""} />
           </BoardScaler>
         </div>
         <div className="ctp-sidebar">

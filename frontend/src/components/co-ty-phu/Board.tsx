@@ -18,6 +18,7 @@ const BOARD_SIZE = CORNER * 2 + EDGE * 9; // 756
 
 interface Props {
   gameState: ClientGameState;
+  myPlayerId?: string;
   onTileClick?: (tileIndex: number) => void;
 }
 
@@ -25,7 +26,7 @@ const TOTAL_TILES = 40;
 const TELEPORT_THRESHOLD = 13;
 const STEP_DELAY_MS = 200;
 
-export default function Board({ gameState, onTileClick }: Props) {
+export default function Board({ gameState, myPlayerId, onTileClick }: Props) {
   const { players, ownedTiles, currentPlayerId } = gameState;
 
   // ── Movement animation ──
@@ -137,6 +138,7 @@ export default function Board({ gameState, onTileClick }: Props) {
               owned={owned}
               playersHere={playersHere}
               allPlayers={players}
+              myPlayerId={myPlayerId}
               isCurrentPlayerTile={
                 !!(
                   currentPlayer &&

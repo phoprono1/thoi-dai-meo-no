@@ -324,6 +324,25 @@ export class CoTyPhuGameService {
         gs,
         `${player.name} thế chấp ${tile.name}, nhận ${this.formatMoney(mortgageValue)}.`,
       );
+
+      // If in sell_to_pay mode, check if debt is now cleared
+      if (
+        gs.pendingAction?.type === 'sell_to_pay' &&
+        gs.pendingAction.playerId === playerId
+      ) {
+        const { amount, creditorId } = gs.pendingAction.data as {
+          amount: number;
+          creditorId: string | null;
+        };
+        if (player.money >= amount) {
+          this.settleDebt(gs, player, amount, creditorId);
+          gs.pendingAction = null;
+          if (!gs.diceRoll?.isDouble) this.advanceTurn(gs, room);
+        } else if (this.calculateNetWorth(player, gs) < amount) {
+          this.bankruptPlayer(gs, player, creditorId);
+          this.advanceTurn(gs, room);
+        }
+      }
     } else {
       if (!owned.isMortgaged) return { error: 'Ô chưa bị thế chấp.' };
       const unmortgageCost = Math.floor(tile.price * UNMORTGAGE_RATE);

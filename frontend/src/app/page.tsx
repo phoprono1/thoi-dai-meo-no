@@ -27,6 +27,19 @@ const GAMES = [
     available: true,
     theme: "Phiên bản Việt Nam",
   },
+  {
+    id: "ma-soi",
+    href: "/ma-soi",
+    emoji: "🐺🌕",
+    name: "Ma Sói",
+    subtitle: "Werewolf",
+    description:
+      "Trò chơi suy luận xã hội kinh điển – dân làng vs bầy sói. 20 vai trò, hệ thống bật/tắt linh hoạt!",
+    tag: "5–20 người",
+    tagColor: "#a855f7",
+    available: false,
+    theme: "Đang phát triển",
+  },
 ];
 
 const COMING_SOON = [

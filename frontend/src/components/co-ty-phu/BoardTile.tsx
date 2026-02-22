@@ -16,6 +16,7 @@ interface Props {
   playersHere: ClientPlayer[];
   allPlayers: ClientPlayer[];
   isCurrentPlayerTile?: boolean;
+  myPlayerId?: string;
   onClick?: () => void;
 }
 
@@ -34,15 +35,15 @@ const TYPE_ICONS: Record<string, string> = {
   utility: "⚡",
 };
 
-const BUILDING_ICONS = ["", "🏠", "🏠🏠", "🏠×3", "🏠×4", "🏨"];
-
 /** Small token avatars shown on the tile */
 function PlayerTokens({
   playersHere,
   allPlayers,
+  myPlayerId,
 }: {
   playersHere: ClientPlayer[];
   allPlayers: ClientPlayer[];
+  myPlayerId?: string;
 }) {
   if (playersHere.length === 0) return null;
   return (
@@ -53,15 +54,21 @@ function PlayerTokens({
       {playersHere.map((p) => {
         const pidx = allPlayers.findIndex((pl) => pl.id === p.id);
         const color = PLAYER_COLORS[pidx % PLAYER_COLORS.length];
+        const isMe = p.id === myPlayerId;
         return (
           <div
             key={p.id}
-            className="rounded-full overflow-hidden shadow shrink-0"
+            className="rounded-full overflow-hidden shrink-0"
             style={{
-              width: 16,
-              height: 16,
+              width: isMe ? 22 : 16,
+              height: isMe ? 22 : 16,
               backgroundColor: "#ffffff",
-              border: `2px solid ${color}`,
+              border: `${isMe ? 3 : 2}px solid ${color}`,
+              boxShadow: isMe
+                ? `0 0 0 2px #facc15, 0 2px 8px rgba(0,0,0,0.55)`
+                : "0 1px 3px rgba(0,0,0,0.3)",
+              zIndex: isMe ? 21 : 20,
+              position: "relative",
             }}
             title={p.name}
           >
@@ -86,6 +93,7 @@ export default function BoardTile({
   playersHere,
   allPlayers,
   isCurrentPlayerTile,
+  myPlayerId,
   onClick,
 }: Props) {
   const facing = getTileFacing(tile.index);
@@ -154,7 +162,11 @@ export default function BoardTile({
             {tile.name}
           </span>
         </div>
-        <PlayerTokens playersHere={playersHere} allPlayers={allPlayers} />
+        <PlayerTokens
+          playersHere={playersHere}
+          allPlayers={allPlayers}
+          myPlayerId={myPlayerId}
+        />
       </div>
     );
   }
@@ -259,14 +271,57 @@ export default function BoardTile({
             </div>
           )}
           {owned && owned.buildings > 0 && (
-            <div style={{ fontSize: 7, marginTop: 1 }}>
-              {BUILDING_ICONS[owned.buildings]}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 1,
+                marginTop: 1,
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  width: 12,
+                  height: 12,
+                  flexShrink: 0,
+                }}
+              >
+                <Image
+                  src={
+                    owned.buildings === 5
+                      ? "/assets/co-ty-phu/ui/hotel.png"
+                      : "/assets/co-ty-phu/ui/house.png"
+                  }
+                  alt={owned.buildings === 5 ? "Hotel" : "House"}
+                  fill
+                  className="object-contain"
+                  sizes="12px"
+                />
+              </div>
+              {owned.buildings > 1 && owned.buildings < 5 && (
+                <span
+                  style={{
+                    fontSize: 6.5,
+                    fontWeight: 700,
+                    color: "#166534",
+                    lineHeight: 1,
+                  }}
+                >
+                  ×{owned.buildings}
+                </span>
+              )}
             </div>
           )}
         </div>
 
         {!stripAtTop && colorStrip}
-        <PlayerTokens playersHere={playersHere} allPlayers={allPlayers} />
+        <PlayerTokens
+          playersHere={playersHere}
+          allPlayers={allPlayers}
+          myPlayerId={myPlayerId}
+        />
       </div>
     );
   }
@@ -373,11 +428,42 @@ export default function BoardTile({
             </div>
           )}
           {owned && owned.buildings > 0 && (
-            <div
-              className="absolute top-0.5 right-0.5 z-10"
-              style={{ fontSize: 8, lineHeight: 1 }}
-            >
-              {BUILDING_ICONS[owned.buildings]}
+            <div className="absolute top-0.5 right-0.5 z-10 flex items-center gap-0.5">
+              <div
+                style={{
+                  position: "relative",
+                  width: 13,
+                  height: 13,
+                  flexShrink: 0,
+                }}
+              >
+                <Image
+                  src={
+                    owned.buildings === 5
+                      ? "/assets/co-ty-phu/ui/hotel.png"
+                      : "/assets/co-ty-phu/ui/house.png"
+                  }
+                  alt={owned.buildings === 5 ? "Hotel" : "House"}
+                  fill
+                  className="object-contain"
+                  sizes="13px"
+                />
+              </div>
+              {owned.buildings > 1 && owned.buildings < 5 && (
+                <span
+                  style={{
+                    fontSize: 6.5,
+                    fontWeight: 700,
+                    color: "#166534",
+                    backgroundColor: "rgba(255,255,255,0.85)",
+                    borderRadius: 2,
+                    padding: "0 1px",
+                    lineHeight: 1,
+                  }}
+                >
+                  ×{owned.buildings}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -394,7 +480,11 @@ export default function BoardTile({
           />
         )}
 
-        <PlayerTokens playersHere={playersHere} allPlayers={allPlayers} />
+        <PlayerTokens
+          playersHere={playersHere}
+          allPlayers={allPlayers}
+          myPlayerId={myPlayerId}
+        />
       </div>
     );
   }
