@@ -58,6 +58,7 @@ export enum GamePhase {
   NIGHT_WOLF = 'night_wolf', // Sói chọn mục tiêu
   NIGHT_ALPHA = 'night_alpha', // Sói Già dùng năng lực (nếu muốn)
   NIGHT_SEER = 'night_seer', // Tiên Tri kiểm tra
+  NIGHT_DETECTIVE = 'night_detective', // Thám Tử kiểm tra 2 người cùng phe không
   NIGHT_DOCTOR = 'night_doctor', // Thầy Thuốc cứu
   NIGHT_BODYGUARD = 'night_bodyguard', // Vệ Sĩ bảo vệ
   NIGHT_WITCH = 'night_witch', // Phù Thủy dùng thuốc
@@ -640,6 +641,7 @@ export interface NightActions {
   witchSaveUsed: boolean; // Phù Thủy dùng thuốc cứu đêm nay
   witchKillTarget: string | null; // Phù Thủy dùng thuốc độc
   foxTargets: [string, string, string] | null; // 3 người Cáo kiểm tra
+  detectiveTargets: [string, string] | null; // 2 người Thám Tử so sánh phe
   serialKillerTarget: string | null;
   whiteWolfTarget: string | null;
   mediumTarget: string | null; // Đồng Cốt hỏi ai

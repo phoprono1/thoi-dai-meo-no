@@ -749,13 +749,17 @@ export class GameService {
         const defuseCard = player.hand.splice(defuseIndex, 1)[0];
         gs.discardPile.push(defuseCard);
 
-        // Insert Exploding Kitten back into deck at chosen position
+        // Insert Exploding Kitten back into deck at chosen position.
+        // drawCard uses deck.pop() so the "top" of the deck = last element (high index).
+        // The frontend sends 0 = top, deckCount = bottom, so we invert:
+        // actualIndex = deck.length - clampedPos
         const ekCard = gs.pendingAction.data.explodingKittenCard;
         const clampedPos = Math.max(
             0,
             Math.min(insertPosition, gs.deck.length),
         );
-        gs.deck.splice(clampedPos, 0, ekCard);
+        const actualInsertIndex = gs.deck.length - clampedPos;
+        gs.deck.splice(actualInsertIndex, 0, ekCard);
 
         gs.pendingAction = null;
 

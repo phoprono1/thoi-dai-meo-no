@@ -25,6 +25,12 @@ interface GameViewProps {
   wolfChatMessages: ChatMessage[];
   deadChatMessages: ChatMessage[];
   seerHistory: { round: number; targetId: string; isWolf: boolean }[];
+  detectiveHistory: {
+    round: number;
+    targetId1: string;
+    targetId2: string;
+    sameTeam: boolean;
+  }[];
   onNightAction: (phase: GamePhase, payload: object) => void;
   onVote: (targetId: string) => void;
   onUnvote: () => void;
@@ -42,6 +48,7 @@ export default function GameView({
   wolfChatMessages,
   deadChatMessages,
   seerHistory,
+  detectiveHistory,
   onNightAction,
   onVote,
   onUnvote,
@@ -134,6 +141,8 @@ export default function GameView({
       onNightAction(phase, { targetId: selectedTarget });
     } else if (phase === GamePhase.NIGHT_FOX) {
       onNightAction(phase, { targetIds: selectedTargets });
+    } else if (phase === GamePhase.NIGHT_DETECTIVE) {
+      onNightAction(phase, { targetIds: selectedTargets });
     } else if (phase === GamePhase.NIGHT_WITCH) {
       onNightAction(phase, {
         usePotion: witchPotion,
@@ -176,6 +185,8 @@ export default function GameView({
       case GamePhase.NIGHT_SERIAL_KILLER:
       case GamePhase.NIGHT_MEDIUM:
         return me.role === phaseToRole(phase);
+      case GamePhase.NIGHT_DETECTIVE:
+        return me.role === RoleId.DETECTIVE;
       case GamePhase.NIGHT_WHITE_WOLF:
         return me.role === RoleId.WHITE_WOLF;
       case GamePhase.NIGHT_ALPHA:
@@ -401,6 +412,36 @@ export default function GameView({
                 })}
               </div>
             )}
+
+            {/* Detective history */}
+            {me.role === RoleId.DETECTIVE && detectiveHistory.length > 0 && (
+              <div className="ml-auto flex gap-1 flex-wrap justify-end max-w-xs items-center">
+                <Image
+                  src="/assets/ma-soi/ui/eye.png"
+                  alt="detective"
+                  width={14}
+                  height={14}
+                  className="opacity-60"
+                />
+                {detectiveHistory.map((h, i) => {
+                  const name1 =
+                    game.players.find((p) => p.id === h.targetId1)?.name ??
+                    h.targetId1;
+                  const name2 =
+                    game.players.find((p) => p.id === h.targetId2)?.name ??
+                    h.targetId2;
+                  return (
+                    <span
+                      key={i}
+                      className={`text-xs px-1.5 py-0.5 rounded ${h.sameTeam ? "bg-yellow-600/60" : "bg-slate-600/60"}`}
+                    >
+                      {name1} &amp; {name2}:{" "}
+                      {h.sameTeam ? "✓ cùng phe" : "✗ khác phe"}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -462,10 +503,11 @@ export default function GameView({
                         return;
                       }
 
-                      // Night multi-select (Fox × 3, Cupid × 2)
+                      // Night multi-select (Fox × 3, Cupid × 2, Detective × 2)
                       if (
                         phase === GamePhase.NIGHT_FOX ||
-                        phase === GamePhase.NIGHT_CUPID
+                        phase === GamePhase.NIGHT_CUPID ||
+                        phase === GamePhase.NIGHT_DETECTIVE
                       ) {
                         const limit = phase === GamePhase.NIGHT_FOX ? 3 : 2;
                         setSelectedTargets((prev) => {
@@ -567,6 +609,12 @@ export default function GameView({
                 {phase === GamePhase.NIGHT_CUPID && (
                   <p className="text-xs text-white/50">
                     Đã chọn {selectedTargets.length}/2 tình nhân
+                  </p>
+                )}
+                {phase === GamePhase.NIGHT_DETECTIVE && (
+                  <p className="text-xs text-white/50">
+                    Đã chọn {selectedTargets.length}/2 người — kết quả chỉ tiết
+                    lộ <em>cùng phe</em> hay không
                   </p>
                 )}
 
@@ -1145,6 +1193,7 @@ function canSubmitAction(
     return true; // can skip
   if (phase === GamePhase.NIGHT_FOX) return targets.length === 3;
   if (phase === GamePhase.NIGHT_CUPID) return targets.length === 2;
+  if (phase === GamePhase.NIGHT_DETECTIVE) return targets.length === 2;
   if (phase === GamePhase.NIGHT_WITCH)
     return (
       potion === "none" || potion === "save" || (potion === "kill" && !!target)
@@ -1198,6 +1247,12 @@ function getPlayerSelectability(
       return (
         player.id !== me.id &&
         me.role === RoleId.CUPID &&
+        (selectedTargets.length < 2 || selectedTargets.includes(player.id))
+      );
+    case GamePhase.NIGHT_DETECTIVE:
+      return (
+        player.id !== me.id &&
+        me.role === RoleId.DETECTIVE &&
         (selectedTargets.length < 2 || selectedTargets.includes(player.id))
       );
     case GamePhase.NIGHT_WILD_CHILD:

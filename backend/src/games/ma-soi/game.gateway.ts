@@ -285,6 +285,19 @@ export class MaSoiGateway implements OnGatewayInit, OnGatewayDisconnect {
             client.emit(MaSoiSocketEvent.FOX_RESULT, { hasWolf });
         }
 
+        // Detective result
+        if (data.phase === GamePhase.NIGHT_DETECTIVE && room.gameState.nightActions.detectiveTargets) {
+            const [da, db] = room.gameState.nightActions.detectiveTargets;
+            const pa = room.gameState.players.find((p) => p.id === da);
+            const pb = room.gameState.players.find((p) => p.id === db);
+            if (pa && pb) {
+                client.emit(MaSoiSocketEvent.DETECTIVE_RESULT, {
+                    targetIds: [da, db],
+                    sameTeam: pa.team === pb.team,
+                });
+            }
+        }
+
         // Try auto-advance the phase (if all expected have submitted)
         this.tryAdvanceNightPhase(room.id, data.phase);
     }
@@ -504,6 +517,7 @@ export class MaSoiGateway implements OnGatewayInit, OnGatewayDisconnect {
             case GamePhase.NIGHT_WOLF:
             case GamePhase.NIGHT_ALPHA:
             case GamePhase.NIGHT_SEER:
+            case GamePhase.NIGHT_DETECTIVE:
             case GamePhase.NIGHT_DOCTOR:
             case GamePhase.NIGHT_BODYGUARD:
             case GamePhase.NIGHT_WITCH:
@@ -715,6 +729,7 @@ export class MaSoiGateway implements OnGatewayInit, OnGatewayDisconnect {
                     ...findAlive(RoleId.SEER),
                     ...findAlive(RoleId.LITTLE_RED),
                 ].slice(0, 1); // only 1 seer per game
+            case GamePhase.NIGHT_DETECTIVE: return findAlive(RoleId.DETECTIVE);
             case GamePhase.NIGHT_DOCTOR: return findAlive(RoleId.DOCTOR);
             case GamePhase.NIGHT_BODYGUARD: return findAlive(RoleId.BODYGUARD);
             case GamePhase.NIGHT_WITCH: return findAlive(RoleId.WITCH);

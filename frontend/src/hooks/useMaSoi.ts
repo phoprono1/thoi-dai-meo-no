@@ -49,6 +49,7 @@ export interface MaSoiState {
     // Seer / fox / detective accumulated results
     seerHistory: { round: number; targetId: string; isWolf: boolean }[];
     foxHistory: { round: number; hasWolf: boolean }[];
+    detectiveHistory: { round: number; targetId1: string; targetId2: string; sameTeam: boolean }[];
 
     // Error / notifications
     error: string | null;
@@ -74,6 +75,7 @@ type Action =
     | { type: 'PUSH_DEAD_CHAT'; payload: ChatMessage }
     | { type: 'PUSH_SEER_RESULT'; payload: { round: number; targetId: string; isWolf: boolean } }
     | { type: 'PUSH_FOX_RESULT'; payload: { round: number; hasWolf: boolean } }
+    | { type: 'PUSH_DETECTIVE_RESULT'; payload: { round: number; targetId1: string; targetId2: string; sameTeam: boolean } }
     | { type: 'SET_ERROR'; payload: string | null }
     | { type: 'SET_NOTIFICATION'; payload: string | null }
     | { type: 'PATCH_GAME_PHASE'; payload: { phase: GamePhase; deadline?: number } }
@@ -87,14 +89,15 @@ function reducer(state: MaSoiState, action: Action): MaSoiState {
         case 'SET_PLAYER_NAME': return { ...state, playerName: action.payload };
         case 'SET_PLAYER_AVATAR': return { ...state, playerAvatar: action.payload };
         case 'SET_ROOM': return { ...state, room: action.payload };
-        case 'CLEAR_ROOM': return { ...state, room: null, game: null, view: 'lobby', chatMessages: [], wolfChatMessages: [], deadChatMessages: [], seerHistory: [], foxHistory: [] };
+        case 'CLEAR_ROOM': return { ...state, room: null, game: null, view: 'lobby', chatMessages: [], wolfChatMessages: [], deadChatMessages: [], seerHistory: [], foxHistory: [], detectiveHistory: [] };
         case 'SET_ROOM_LIST': return { ...state, roomList: action.payload };
         case 'SET_GAME': return {
             ...state,
             game: action.payload,
-            // Reset seer/fox history when a brand-new game starts
+            // Reset seer/fox/detective history when a brand-new game starts
             seerHistory: (!state.game || action.payload.round < state.game.round) ? [] : state.seerHistory,
             foxHistory: (!state.game || action.payload.round < state.game.round) ? [] : state.foxHistory,
+            detectiveHistory: (!state.game || action.payload.round < state.game.round) ? [] : state.detectiveHistory,
         };
         case 'SET_TIMER': return { ...state, secondsLeft: action.payload };
         case 'PUSH_CHAT':
@@ -113,6 +116,8 @@ function reducer(state: MaSoiState, action: Action): MaSoiState {
         }
         case 'PUSH_FOX_RESULT':
             return { ...state, foxHistory: [...state.foxHistory, action.payload] };
+        case 'PUSH_DETECTIVE_RESULT':
+            return { ...state, detectiveHistory: [...state.detectiveHistory, action.payload] };
         case 'SET_ERROR': return { ...state, error: action.payload };
         case 'SET_NOTIFICATION': return { ...state, notification: action.payload };
         case 'PATCH_GAME_PHASE':
@@ -159,6 +164,7 @@ const INITIAL_STATE: MaSoiState = {
     deadChatMessages: [],
     seerHistory: [],
     foxHistory: [],
+    detectiveHistory: [],
     error: null,
     notification: null,
 };
@@ -246,6 +252,10 @@ export function useMaSoi() {
             dispatch({ type: 'PUSH_FOX_RESULT', payload: { round: -1, hasWolf: data.hasWolf } });
         });
 
+        socket.on(MaSoiSocketEvent.DETECTIVE_RESULT, (data: { targetIds: [string, string]; sameTeam: boolean }) => {
+            dispatch({ type: 'PUSH_DETECTIVE_RESULT', payload: { round: -1, targetId1: data.targetIds[0], targetId2: data.targetIds[1], sameTeam: data.sameTeam } });
+        });
+
         // Chat
         socket.on(MaSoiSocketEvent.CHAT_MESSAGE, (msg: ChatMessage) => {
             dispatch({ type: 'PUSH_CHAT', payload: { ...msg, channel: 'public' } });
@@ -271,6 +281,7 @@ export function useMaSoi() {
             socket.off(MaSoiSocketEvent.GAME_OVER);
             socket.off(MaSoiSocketEvent.SEER_RESULT);
             socket.off(MaSoiSocketEvent.FOX_RESULT);
+            socket.off(MaSoiSocketEvent.DETECTIVE_RESULT);
             socket.off(MaSoiSocketEvent.CHAT_MESSAGE);
             socket.off(MaSoiSocketEvent.WOLF_CHAT_MESSAGE);
             socket.off(MaSoiSocketEvent.DEAD_CHAT_MESSAGE);

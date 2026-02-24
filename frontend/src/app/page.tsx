@@ -37,8 +37,8 @@ const GAMES = [
       "Trò chơi suy luận xã hội kinh điển – dân làng vs bầy sói. 20 vai trò, hệ thống bật/tắt linh hoạt!",
     tag: "5–20 người",
     tagColor: "#a855f7",
-    available: false,
-    theme: "Đang phát triển",
+    available: true,
+    theme: "5–20 người chơi",
   },
 ];
 

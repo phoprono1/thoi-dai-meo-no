@@ -27,6 +27,7 @@ export default function MaSoiPage() {
     wolfChatMessages,
     deadChatMessages,
     seerHistory,
+    detectiveHistory,
     error,
     notification,
     fetchRooms,
@@ -98,6 +99,7 @@ export default function MaSoiPage() {
           wolfChatMessages={wolfChatMessages}
           deadChatMessages={deadChatMessages}
           seerHistory={seerHistory}
+          detectiveHistory={detectiveHistory}
           onNightAction={submitNightAction}
           onVote={castVote}
           onUnvote={unVote}

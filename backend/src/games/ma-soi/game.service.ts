@@ -104,6 +104,7 @@ export class MaSoiGameService {
         phases.push(GamePhase.NIGHT_WOLF);
         if (isEnabled(RoleId.ALPHA_WOLF)) phases.push(GamePhase.NIGHT_ALPHA);
         if (isEnabled(RoleId.SEER)) phases.push(GamePhase.NIGHT_SEER);
+        if (isEnabled(RoleId.DETECTIVE)) phases.push(GamePhase.NIGHT_DETECTIVE);
         if (isEnabled(RoleId.DOCTOR)) phases.push(GamePhase.NIGHT_DOCTOR);
         if (isEnabled(RoleId.BODYGUARD)) phases.push(GamePhase.NIGHT_BODYGUARD);
         if (isEnabled(RoleId.WITCH)) phases.push(GamePhase.NIGHT_WITCH);
@@ -262,6 +263,16 @@ export class MaSoiGameService {
                     na.witchKillTarget = payload.targetId;
                 }
                 // 'none' = skip
+                break;
+            }
+            case GamePhase.NIGHT_DETECTIVE: {
+                if (player.role !== RoleId.DETECTIVE) return { error: 'Bạn không phải Thám Tử.' };
+                if (!payload.targetIds || payload.targetIds.length !== 2)
+                    return { error: 'Chọn đúng 2 người.' };
+                const [da, db] = payload.targetIds;
+                if (da === db) return { error: 'Phải chọn 2 người khác nhau.' };
+                if (da === playerId || db === playerId) return { error: 'Không thể kiểm tra bản thân.' };
+                na.detectiveTargets = [da, db];
                 break;
             }
             case GamePhase.NIGHT_FOX: {
@@ -695,7 +706,14 @@ export class MaSoiGameService {
 
         // Detective result
         let detectiveResult: ClientMaSoiGameState['detectiveResult'] = undefined;
-        // Detective result would be stored in a separate field — handled in gateway
+        if (myPlayer?.role === RoleId.DETECTIVE && na.detectiveTargets) {
+            const [da, db] = na.detectiveTargets;
+            const pa = gs.players.find((p) => p.id === da);
+            const pb = gs.players.find((p) => p.id === db);
+            if (pa && pb) {
+                detectiveResult = { sameTeam: pa.team === pb.team };
+            }
+        }
 
         // Fox result
         let foxResult: ClientMaSoiGameState['foxResult'] = undefined;
@@ -825,6 +843,7 @@ export class MaSoiGameService {
             witchSaveUsed: false,
             witchKillTarget: null,
             foxTargets: null,
+            detectiveTargets: null,
             serialKillerTarget: null,
             whiteWolfTarget: null,
             mediumTarget: null,
