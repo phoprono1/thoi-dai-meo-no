@@ -788,7 +788,12 @@ export default function GameView({
                   </p>
                   <span className="text-xs text-white/50">
                     {discussionReadyPlayerIds.length} /
-                    {game.players.filter((p) => p.status === PlayerStatus.ALIVE).length} người
+                    {
+                      game.players.filter(
+                        (p) => p.status === PlayerStatus.ALIVE,
+                      ).length
+                    }{" "}
+                    người
                   </span>
                 </div>
 
@@ -809,7 +814,10 @@ export default function GameView({
                           }`}
                         >
                           <img
-                            src={p.avatar || "/assets/ma-soi/ui/avatars/avatar-1.png"}
+                            src={
+                              p.avatar ||
+                              "/assets/ma-soi/ui/avatars/avatar-1.png"
+                            }
                             alt={p.name}
                             className="w-full h-full rounded-full object-cover opacity-80"
                           />

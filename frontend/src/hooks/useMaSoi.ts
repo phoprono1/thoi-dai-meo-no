@@ -251,12 +251,10 @@ export function useMaSoi() {
         });
 
         // Seer / fox / detective personal results
-        socket.on(MaSoiSocketEvent.SEER_RESULT, (data: { targetId: string; team: string; role: string }) => {
-            // Already handled via GAME_STATE, but also direct push for immediate feedback
-            dispatch({
-                type: 'PUSH_SEER_RESULT',
-                payload: { round: -1, targetId: data.targetId, isWolf: data.team === 'werewolf' },
-            });
+        socket.on(MaSoiSocketEvent.SEER_RESULT, (_data: { targetId: string; team: string; role: string }) => {
+            // History is accumulated via the GAME_STATE handler (which carries the correct round number).
+            // No separate push here — doing so would add a duplicate entry with round:-1 that bypasses the
+            // round+targetId deduplication check.
         });
 
         socket.on(MaSoiSocketEvent.FOX_RESULT, (data: { hasWolf: boolean }) => {

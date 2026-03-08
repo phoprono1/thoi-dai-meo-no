@@ -853,7 +853,7 @@ export class MaSoiGameService {
         }
     }
 
-    private emptyNightActions(): NightActions {
+    public emptyNightActions(): NightActions {
         return {
             wolfTarget: null,
             wolfSecondTarget: null,

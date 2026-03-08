@@ -689,6 +689,9 @@ export class MaSoiGateway implements OnGatewayInit, OnGatewayDisconnect {
 
         // Proceed to next night
         gs.round++;
+        // Clear stale night-action results BEFORE broadcasting so clients do not
+        // receive last round's seer/detective/fox targets tagged with the new round number
+        gs.nightActions = this.gameService.emptyNightActions();
         gs.phase = GamePhase.NIGHT_START;
         gs.phaseDeadline = Date.now() + 4000;
         this.broadcastPhaseChange(roomId);
