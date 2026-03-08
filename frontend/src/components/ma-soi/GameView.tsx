@@ -20,7 +20,9 @@ import {
 interface GameViewProps {
   game: ClientMaSoiGameState;
   playerId: string | null;
+  hostId: string | null;
   secondsLeft: number;
+  discussionReadyPlayerIds: string[];
   chatMessages: ChatMessage[];
   wolfChatMessages: ChatMessage[];
   deadChatMessages: ChatMessage[];
@@ -34,6 +36,8 @@ interface GameViewProps {
   onNightAction: (phase: GamePhase, payload: object) => void;
   onVote: (targetId: string) => void;
   onUnvote: () => void;
+  onDiscussionReady: () => void;
+  onSkipDiscussion: () => void;
   onHunterShoot: (targetId: string) => void;
   onSendChat: (msg: string) => void;
   onSendWolfChat: (msg: string) => void;
@@ -43,7 +47,9 @@ interface GameViewProps {
 export default function GameView({
   game,
   playerId,
+  hostId,
   secondsLeft,
+  discussionReadyPlayerIds,
   chatMessages,
   wolfChatMessages,
   deadChatMessages,
@@ -52,6 +58,8 @@ export default function GameView({
   onNightAction,
   onVote,
   onUnvote,
+  onDiscussionReady,
+  onSkipDiscussion,
   onHunterShoot,
   onSendChat,
   onSendWolfChat,
@@ -770,6 +778,73 @@ export default function GameView({
                   🌄 Đêm bình yên — không có ai chết!
                 </div>
               )}
+
+            {/* ── Sẵn sàng bỏ phiếu panel (DAY_DISCUSSION only) ── */}
+            {phase === GamePhase.DAY_DISCUSSION && (
+              <div className="mt-4 bg-yellow-950/60 border border-yellow-500/30 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-yellow-300 uppercase tracking-widest">
+                    Sẵn sàng bỏ phiếu
+                  </p>
+                  <span className="text-xs text-white/50">
+                    {discussionReadyPlayerIds.length} /
+                    {game.players.filter((p) => p.status === PlayerStatus.ALIVE).length} người
+                  </span>
+                </div>
+
+                {/* Ready indicator dots */}
+                <div className="flex flex-wrap gap-1.5">
+                  {game.players
+                    .filter((p) => p.status === PlayerStatus.ALIVE)
+                    .map((p) => {
+                      const isReady = discussionReadyPlayerIds.includes(p.id);
+                      return (
+                        <div
+                          key={p.id}
+                          title={p.name}
+                          className={`w-6 h-6 rounded-full border-2 transition-all ${
+                            isReady
+                              ? "border-green-400 bg-green-500/40"
+                              : "border-white/20 bg-white/5"
+                          }`}
+                        >
+                          <img
+                            src={p.avatar || "/assets/ma-soi/ui/avatars/avatar-1.png"}
+                            alt={p.name}
+                            className="w-full h-full rounded-full object-cover opacity-80"
+                          />
+                        </div>
+                      );
+                    })}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  {isAlive && (
+                    <button
+                      onClick={onDiscussionReady}
+                      className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                        discussionReadyPlayerIds.includes(playerId ?? "")
+                          ? "bg-green-600 hover:bg-green-700 text-white"
+                          : "bg-white/10 hover:bg-white/20 text-white"
+                      }`}
+                    >
+                      {discussionReadyPlayerIds.includes(playerId ?? "")
+                        ? "✔ Đã sẵn sàng"
+                        : "🗳️ Sẵn sàng bỏ phiếu"}
+                    </button>
+                  )}
+                  {playerId === hostId && (
+                    <button
+                      onClick={onSkipDiscussion}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-600/80 hover:bg-orange-500 text-white transition-all"
+                      title="Bỏ qua thảo luận (chỉ host)"
+                    >
+                      ⏩ Bỏ qua
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Right panel: Chat ──────────────── */}

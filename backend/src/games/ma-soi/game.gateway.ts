@@ -86,7 +86,7 @@ export class MaSoiGateway implements OnGatewayInit, OnGatewayDisconnect {
     @SubscribeMessage(MaSoiSocketEvent.ROOM_CREATE)
     handleRoomCreate(
         @ConnectedSocket() client: Socket,
-        @MessageBody() data: { name: string; password?: string; playerName: string; avatar?: string },
+        @MessageBody() data: { name: string; password?: string; playerName: string; avatar?: string; maxPlayers?: number },
     ) {
         const result = this.roomService.createRoom({
             hostSocketId: client.id,
@@ -94,6 +94,7 @@ export class MaSoiGateway implements OnGatewayInit, OnGatewayDisconnect {
             password: data.password,
             playerName: data.playerName,
             avatar: data.avatar,
+            maxPlayers: data.maxPlayers,
         });
 
         if ('error' in result) {
@@ -324,6 +325,18 @@ export class MaSoiGateway implements OnGatewayInit, OnGatewayDisconnect {
         this.server.to(room.id).emit(MaSoiSocketEvent.VOTE_UPDATE, {
             votes: room.gameState.votes,
         });
+
+        // Auto-resolve when all alive players have voted
+        const gs = room.gameState;
+        const alivePlayers = gs.players.filter((p) => p.status === PlayerStatus.ALIVE);
+        const allVoted =
+            alivePlayers.length > 0 &&
+            alivePlayers.every((p) => gs.votes.some((v) => v.voterId === p.id));
+        if (allVoted) {
+            const old = this.phaseTimers.get(room.id);
+            if (old) { clearInterval(old); this.phaseTimers.delete(room.id); }
+            this.resolveVoteAndContinue(room.id);
+        }
     }
 
     @SubscribeMessage(MaSoiSocketEvent.DAY_UNVOTE)
@@ -337,6 +350,47 @@ export class MaSoiGateway implements OnGatewayInit, OnGatewayDisconnect {
         this.server.to(room.id).emit(MaSoiSocketEvent.VOTE_UPDATE, {
             votes: room.gameState.votes,
         });
+    }
+
+    // ════════════════════════════════════════════
+    // DISCUSSION SKIP
+    // ════════════════════════════════════════════
+
+    @SubscribeMessage(MaSoiSocketEvent.DISCUSSION_READY)
+    handleDiscussionReady(@ConnectedSocket() client: Socket) {
+        const mapping = this.roomService.getRoomBySocket(client.id);
+        if (!mapping) return;
+        const { room, player } = mapping;
+        if (!room.gameState || room.gameState.phase !== GamePhase.DAY_DISCUSSION) return;
+
+        const { readyPlayerIds, allReady } = this.gameService.toggleDiscussionReady(room, player.id);
+        this.server.to(room.id).emit(MaSoiSocketEvent.DISCUSSION_READY_UPDATE, { readyPlayerIds });
+
+        if (allReady) {
+            this.advanceDiscussionToVote(room.id);
+        }
+    }
+
+    @SubscribeMessage(MaSoiSocketEvent.SKIP_DISCUSSION)
+    handleSkipDiscussion(@ConnectedSocket() client: Socket) {
+        const mapping = this.roomService.getRoomBySocket(client.id);
+        if (!mapping) return;
+        const { room, player } = mapping;
+        if (!room.gameState || room.gameState.phase !== GamePhase.DAY_DISCUSSION) return;
+        if (player.id !== room.hostId) {
+            return client.emit(MaSoiSocketEvent.ROOM_ERROR, 'Chỉ host mới có thể bỏ qua thảo luận.');
+        }
+        this.advanceDiscussionToVote(room.id);
+    }
+
+    private advanceDiscussionToVote(roomId: string): void {
+        const room = this.roomService.getRoom(roomId);
+        if (!room || !room.gameState) return;
+        const old = this.phaseTimers.get(roomId);
+        if (old) { clearInterval(old); this.phaseTimers.delete(roomId); }
+        this.gameService.startVoting(room);
+        this.broadcastPhaseChange(roomId);
+        this.schedulePhaseTimer(roomId, room.gameState.phaseDeadline);
     }
 
     // ════════════════════════════════════════════

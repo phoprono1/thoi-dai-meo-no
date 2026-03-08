@@ -99,6 +99,9 @@ export enum MaSoiSocketEvent {
     DETECTIVE_RESULT = 'ms:detective_result',
     FOX_RESULT = 'ms:fox_result',
     VOTE_UPDATE = 'ms:vote_update',
+    DISCUSSION_READY = 'ms:discussion_ready',
+    DISCUSSION_READY_UPDATE = 'ms:disc_ready_update',
+    SKIP_DISCUSSION = 'ms:skip_discussion',
     CHAT_SEND = 'ms:chat_send',
     CHAT_MESSAGE = 'ms:chat_message',
     WOLF_CHAT_SEND = 'ms:wolf_chat_send',
@@ -144,6 +147,7 @@ export interface ClientMaSoiGameState {
     winner: Team | null;
     winnerIds: string[];
     phaseDeadline: number;
+    discussionReadyPlayerIds: string[];
     wolfChatEnabled: boolean;
     myRole?: RoleId;
     myTeam?: Team;

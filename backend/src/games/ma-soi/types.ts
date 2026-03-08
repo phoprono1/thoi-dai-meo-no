@@ -115,6 +115,9 @@ export enum MaSoiSocketEvent {
   DETECTIVE_RESULT = 'ms:detective_result', // Kết quả thám tử
   FOX_RESULT = 'ms:fox_result',
   VOTE_UPDATE = 'ms:vote_update', // Cập nhật bảng phiếu realtime
+  DISCUSSION_READY = 'ms:discussion_ready', // Client báo sẵn sàng bỏ phiếu
+  DISCUSSION_READY_UPDATE = 'ms:disc_ready_update', // Server broadcast danh sách sẵn sàng
+  SKIP_DISCUSSION = 'ms:skip_discussion', // Host bỏ qua thảo luận
   CHAT_SEND = 'ms:chat_send',
   CHAT_MESSAGE = 'ms:chat_message',
   WOLF_CHAT_SEND = 'ms:wolf_chat_send', // Chat nội bộ phe sói (đêm)
@@ -671,6 +674,7 @@ export interface MaSoiGameState {
   phaseDeadline: number; // timestamp kết thúc phase hiện tại
   phaseTimer: NodeJS.Timeout | null;
   cubRageActive: boolean; // Sói Con bị giết → đêm sau giết 2
+  discussionReadyPlayers: string[]; // Ids người chơi đã bấm "Sẵn sàng bỏ phiếu"
 }
 
 // ─────────────────────────────────────────────
@@ -706,6 +710,7 @@ export interface ClientMaSoiGameState {
   winner: Team | null;
   winnerIds: string[];
   phaseDeadline: number;
+  discussionReadyPlayerIds: string[]; // Ids người đã bấm "Sẵn sàng"
   wolfChatEnabled: boolean; // Có cho sói chat không
   // Thông tin cá nhân (server gửi đúng người)
   myRole?: RoleId;

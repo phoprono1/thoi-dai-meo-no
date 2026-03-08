@@ -78,6 +78,7 @@ export class MaSoiGameService {
             phaseDeadline: Date.now() + 3000, // 3s transition
             phaseTimer: null,
             cubRageActive: false,
+            discussionReadyPlayers: [],
         };
 
         room.gameState = gs;
@@ -475,6 +476,7 @@ export class MaSoiGameService {
     startDiscussion(room: MaSoiRoom): void {
         const gs = room.gameState!;
         gs.votes = [];
+        gs.discussionReadyPlayers = [];
         gs.phase = GamePhase.DAY_DISCUSSION;
         gs.phaseDeadline = Date.now() + room.config.discussionTime * 1000;
         this.log(gs, `☀️ Ngày ${gs.round} — Hãy tìm ra Ma Sói!`);
@@ -486,6 +488,24 @@ export class MaSoiGameService {
         gs.phase = GamePhase.DAY_VOTE;
         gs.phaseDeadline = Date.now() + room.config.voteTime * 1000;
         this.log(gs, `🗳️ Bỏ phiếu bắt đầu!`);
+    }
+
+    toggleDiscussionReady(
+        room: MaSoiRoom,
+        playerId: string,
+    ): { readyPlayerIds: string[]; allReady: boolean } {
+        const gs = room.gameState!;
+        const idx = gs.discussionReadyPlayers.indexOf(playerId);
+        if (idx >= 0) {
+            gs.discussionReadyPlayers.splice(idx, 1);
+        } else {
+            gs.discussionReadyPlayers.push(playerId);
+        }
+        const alivePlayers = gs.players.filter((p) => p.status === PlayerStatus.ALIVE);
+        const allReady =
+            alivePlayers.length > 0 &&
+            alivePlayers.every((p) => gs.discussionReadyPlayers.includes(p.id));
+        return { readyPlayerIds: [...gs.discussionReadyPlayers], allReady };
     }
 
     // ════════════════════════════════════════════
@@ -736,6 +756,7 @@ export class MaSoiGameService {
             winner: gs.winner,
             winnerIds: gs.winnerIds,
             phaseDeadline: gs.phaseDeadline,
+            discussionReadyPlayerIds: gs.discussionReadyPlayers,
             wolfChatEnabled: isWolf,
             myRole: myPlayer?.role ?? undefined,
             myTeam: myPlayer?.team,

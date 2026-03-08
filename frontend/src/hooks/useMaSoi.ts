@@ -41,6 +41,9 @@ export interface MaSoiState {
     // Timer
     secondsLeft: number;
 
+    // Discussion ready
+    discussionReadyPlayerIds: string[];
+
     // Chat
     chatMessages: ChatMessage[];
     wolfChatMessages: ChatMessage[];
@@ -70,6 +73,7 @@ type Action =
     | { type: 'SET_ROOM_LIST'; payload: ClientMaSoiRoom[] }
     | { type: 'SET_GAME'; payload: ClientMaSoiGameState }
     | { type: 'SET_TIMER'; payload: number }
+    | { type: 'PATCH_DISCUSSION_READY'; payload: string[] }
     | { type: 'PUSH_CHAT'; payload: ChatMessage }
     | { type: 'PUSH_WOLF_CHAT'; payload: ChatMessage }
     | { type: 'PUSH_DEAD_CHAT'; payload: ChatMessage }
@@ -100,6 +104,7 @@ function reducer(state: MaSoiState, action: Action): MaSoiState {
             detectiveHistory: (!state.game || action.payload.round < state.game.round) ? [] : state.detectiveHistory,
         };
         case 'SET_TIMER': return { ...state, secondsLeft: action.payload };
+        case 'PATCH_DISCUSSION_READY': return { ...state, discussionReadyPlayerIds: action.payload };
         case 'PUSH_CHAT':
             return { ...state, chatMessages: [...state.chatMessages.slice(-99), action.payload] };
         case 'PUSH_WOLF_CHAT':
@@ -124,6 +129,7 @@ function reducer(state: MaSoiState, action: Action): MaSoiState {
             if (!state.game) return state;
             return {
                 ...state,
+                discussionReadyPlayerIds: [],
                 game: {
                     ...state.game,
                     phase: action.payload.phase,
@@ -159,6 +165,7 @@ const INITIAL_STATE: MaSoiState = {
     roomList: [],
     game: null,
     secondsLeft: 0,
+    discussionReadyPlayerIds: [],
     chatMessages: [],
     wolfChatMessages: [],
     deadChatMessages: [],
@@ -235,6 +242,10 @@ export function useMaSoi() {
             dispatch({ type: 'PATCH_GAME_VOTES', payload: data.votes });
         });
 
+        socket.on(MaSoiSocketEvent.DISCUSSION_READY_UPDATE, (data: { readyPlayerIds: string[] }) => {
+            dispatch({ type: 'PATCH_DISCUSSION_READY', payload: data.readyPlayerIds });
+        });
+
         socket.on(MaSoiSocketEvent.GAME_OVER, (data: { winner: string; winnerIds: string[]; players: ClientMaSoiPlayer[] }) => {
             dispatch({ type: 'PATCH_GAME_OVER', payload: data });
         });
@@ -278,6 +289,7 @@ export function useMaSoi() {
             socket.off(MaSoiSocketEvent.GAME_PHASE_CHANGE);
             socket.off(MaSoiSocketEvent.PHASE_TIMER);
             socket.off(MaSoiSocketEvent.VOTE_UPDATE);
+            socket.off(MaSoiSocketEvent.DISCUSSION_READY_UPDATE);
             socket.off(MaSoiSocketEvent.GAME_OVER);
             socket.off(MaSoiSocketEvent.SEER_RESULT);
             socket.off(MaSoiSocketEvent.FOX_RESULT);
@@ -367,6 +379,14 @@ export function useMaSoi() {
         getSocket().emit(MaSoiSocketEvent.DAY_UNVOTE);
     }, []);
 
+    const toggleDiscussionReady = useCallback(() => {
+        getSocket().emit(MaSoiSocketEvent.DISCUSSION_READY);
+    }, []);
+
+    const skipDiscussion = useCallback(() => {
+        getSocket().emit(MaSoiSocketEvent.SKIP_DISCUSSION);
+    }, []);
+
     const hunterShoot = useCallback((targetId: string) => {
         getSocket().emit(MaSoiSocketEvent.HUNTER_SHOOT, { targetId });
     }, []);
@@ -412,6 +432,8 @@ export function useMaSoi() {
         submitNightAction,
         castVote,
         unVote,
+        toggleDiscussionReady,
+        skipDiscussion,
         hunterShoot,
         sendChat,
         sendWolfChat,

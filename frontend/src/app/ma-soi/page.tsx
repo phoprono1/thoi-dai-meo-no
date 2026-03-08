@@ -23,6 +23,7 @@ export default function MaSoiPage() {
     roomList,
     game,
     secondsLeft,
+    discussionReadyPlayerIds,
     chatMessages,
     wolfChatMessages,
     deadChatMessages,
@@ -40,6 +41,8 @@ export default function MaSoiPage() {
     submitNightAction,
     castVote,
     unVote,
+    toggleDiscussionReady,
+    skipDiscussion,
     hunterShoot,
     sendChat,
     sendWolfChat,
@@ -94,7 +97,9 @@ export default function MaSoiPage() {
         <GameView
           game={game}
           playerId={playerId}
+          hostId={room?.hostId ?? null}
           secondsLeft={secondsLeft}
+          discussionReadyPlayerIds={discussionReadyPlayerIds}
           chatMessages={chatMessages}
           wolfChatMessages={wolfChatMessages}
           deadChatMessages={deadChatMessages}
@@ -103,6 +108,8 @@ export default function MaSoiPage() {
           onNightAction={submitNightAction}
           onVote={castVote}
           onUnvote={unVote}
+          onDiscussionReady={toggleDiscussionReady}
+          onSkipDiscussion={skipDiscussion}
           onHunterShoot={hunterShoot}
           onSendChat={sendChat}
           onSendWolfChat={sendWolfChat}
